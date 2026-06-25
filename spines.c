@@ -1,5 +1,6 @@
 #include "spines.h"
 
+#include <assert.h>
 #include <stdalign.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -88,6 +89,7 @@ void count_data_and_check_syntax(const char *str, size_t str_len,
             ++cur_index;
             last_token = TOKEN_RBRACE;
             --cur_group_stack;
+            if (cur_group_stack == (size_t)-1) goto ERROR;
         break;
 
         case '=':
@@ -117,20 +119,6 @@ void count_data_and_check_syntax(const char *str, size_t str_len,
             if (!VALID_TOKEN_BEFORE_STR[last_token]) goto ERROR;
             size_t i = 1;
             while (i < str_len && str[i] != '\"') { ++i; }
-
-            if (i >= str_len) goto ERROR;
-            str += i + 1; str_len -= i + 1;
-            cur_index += i + 1;
-            last_token = TOKEN_STR;
-
-            ++*fields_cap;
-            *string_data_size += i - 1;
-        } break;
-
-        case '\'': {
-            if (!VALID_TOKEN_BEFORE_STR[last_token]) goto ERROR;
-            size_t i = 1;
-            while (i < str_len && str[i] != '\'') { ++i; }
 
             if (i >= str_len) goto ERROR;
             str += i + 1; str_len -= i + 1;
@@ -247,7 +235,11 @@ void spines_init(SpinesContext *sc, const char *str, size_t str_len) {
     typedef struct { size_t ident; size_t next_id_ident; } GroupStackEntry;
     GroupStackEntry group_stack[max_group_stack];
     memset(group_stack, 0, sizeof(group_stack));
-    size_t group_stack_head = 0;
+    size_t group_stack_len = 0;
+
+    size_t next_ident = 0;
+    bool just_after_eq = 0;
+    if (just_after_eq > 0) --just_after_eq;
 
     while (true) {
         if (str_len == 0 || str_len == (size_t)-1) return;
@@ -258,26 +250,88 @@ void spines_init(SpinesContext *sc, const char *str, size_t str_len) {
         const char front = str[0];
         switch (front) {
         case '{':
-        case '=':
         case ',':
+            ++str; --str_len;
+        break;
+
+        case '=':
+            just_after_eq = 2;
             ++str; --str_len;
         break;
 
         // End group
         case '}':
+            assert(group_stack_len > 0);
+            assert(group_stack[group_stack_len - 1].ident < idents_offset);
+            SpinesIdent old_ident =
+                sc->idents[group_stack[group_stack_len - 1].ident];
 
+            --group_stack_len;
+
+            if (group_stack_len > 0) {
+                SpinesIdent *cur_ident =
+                    &sc->idents[group_stack[group_stack_len - 1].ident];
+                cur_ident->fields_len += old_ident.fields_len;
+                cur_ident->parent_len += old_ident.parent_len;
+            }
         break;
 
         // ID Ident
         case '.':
+            sc->idents[idents_offset++] = (SpinesIdent){
+                .name_begin = (size_t)-1,
+                .name_len = group_stack[group_stack_len - 1].next_id_ident,
+                .fields_begin = fields_offset,
+                .fields_len = 0,
+                .parent_len = 1};
+            assert(idents_offset <= sc->idents_cap);
 
+            ++group_stack[group_stack_len - 1].next_id_ident;
+
+            group_stack[group_stack_len++] = (GroupStackEntry){next_ident, 0};
+            ++next_ident;
+
+            str += 2; str_len -= 2;
         break;
 
         // String
-        case '\"':
-        case '\'':
+        case '\"': {
+            size_t i = 1;
+            while (i < str_len && str[i] != '\"') { ++i; }
+            size_t len = i - 1;
 
-        break;
+            sc->field_types[fields_offset] = FIELD_STR;
+            sc->field_vals[fields_offset] = (SpinesField){
+                .str_val = {
+                    .begin = (uint32_t)string_data_offset, 
+                    .len   = (uint32_t)len } };
+            ++fields_offset;
+            assert(fields_offset <= sc->fields_cap);
+
+            memcpy(sc->string_data + string_data_offset, str + 1, len);
+            string_data_offset += len;
+            assert(string_data_offset <= sc->string_data_size);
+
+            assert(group_stack_len > 0);
+            assert(group_stack[group_stack_len - 1].ident < idents_offset);
+            ++sc->idents[group_stack[group_stack_len - 1].ident].fields_len;
+
+            if (just_after_eq) {
+                assert(group_stack_len > 0);
+                assert(group_stack[group_stack_len - 1].ident < idents_offset);
+                SpinesIdent old_ident =
+                    sc->idents[group_stack[group_stack_len - 1].ident];
+
+                --group_stack_len;
+
+                if (group_stack_len > 0) {
+                    SpinesIdent *cur_ident =
+                        &sc->idents[group_stack[group_stack_len - 1].ident];
+                    cur_ident->fields_len += old_ident.fields_len;
+                    cur_ident->parent_len += old_ident.parent_len;
+                }
+            }
+        } break;
 
         default: break;
         }
@@ -287,6 +341,23 @@ void spines_init(SpinesContext *sc, const char *str, size_t str_len) {
             size_t i = 0;
             while (i < str_len && IS_IDENT_CHAR[str[i]]) { ++i; }
 
+            sc->idents[idents_offset++] = (SpinesIdent){
+                .name_begin = ident_names_offset,
+                .name_len = i,
+                .fields_begin = fields_offset,
+                .fields_len = 0,
+                .parent_len = 1};
+            assert(idents_offset <= sc->idents_cap);
+
+            memcpy(sc->ident_names + ident_names_offset, str, i);
+            ident_names_offset += i;
+            assert(ident_names_offset <= sc->ident_names_size);
+
+            group_stack[group_stack_len++] = (GroupStackEntry){next_ident, 0};
+            ++next_ident;
+
+            str += i; str_len -= i;
+
             continue;
         }
 
@@ -295,6 +366,31 @@ void spines_init(SpinesContext *sc, const char *str, size_t str_len) {
             size_t i = 0;
             while (i < str_len && IS_NUM[str[i]]) { ++i; }
 
+            // FIXME: placeholder
+            sc->field_types[fields_offset] = FIELD_INT;
+            sc->field_vals[fields_offset].int_val = 0;
+            ++fields_offset;
+            assert(fields_offset <= sc->fields_cap);
+
+            assert(group_stack_len > 0);
+            assert(group_stack[group_stack_len - 1].ident < idents_offset);
+            ++sc->idents[group_stack[group_stack_len - 1].ident].fields_len;
+
+            if (just_after_eq) {
+                assert(group_stack_len > 0);
+                assert(group_stack[group_stack_len - 1].ident < idents_offset);
+                SpinesIdent old_ident =
+                    sc->idents[group_stack[group_stack_len - 1].ident];
+
+                --group_stack_len;
+
+                if (group_stack_len > 0) {
+                    SpinesIdent *cur_ident =
+                        &sc->idents[group_stack[group_stack_len - 1].ident];
+                    cur_ident->fields_len += old_ident.fields_len;
+                    cur_ident->parent_len += old_ident.parent_len;
+                }
+            }
             continue;
         }
 
@@ -304,6 +400,15 @@ void spines_init(SpinesContext *sc, const char *str, size_t str_len) {
     return;
 
 ERROR:
+    free(sc->buffer);
+    sc->idents = NULL;
+    sc->field_vals = NULL;
+    sc->field_types = NULL;
+    sc->ident_names = sc->string_data = NULL;
+    sc->buffer_offset = sc->buffer_cap = sc->idents_cap = sc->fields_cap
+        = sc->ident_names_size = sc->string_data_size = 0;
+    // TODO proper error
+    printf("error, idk");
     return;
 }
 
