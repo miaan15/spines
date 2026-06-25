@@ -41,6 +41,8 @@ int main() {
 
     spines_parse(&cxt, str, strlen(str));
 
+    if (!cxt.buffer) return 0;
+
     printf("\n\n");
     printf("--- IDENTS (Cap: %zu) ---\n", cxt.idents_cap);
     for (size_t i = 0; i < cxt.idents_cap; ++i) {

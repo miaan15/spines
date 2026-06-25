@@ -52,7 +52,7 @@ void handle_out_of_group(SpinesContext *sc, GroupStackEntry *stack,
     }
 }
 
-void count_data_and_check_syntax(const char *str, size_t str_len,
+bool count_data_and_check_syntax(const char *str, size_t str_len,
                                  bool *IS_IDENT_CHAR,
                                  bool *IS_NUM,
                                  bool *IS_NOT_NUM_CHAR,
@@ -71,15 +71,17 @@ void count_data_and_check_syntax(const char *str, size_t str_len,
     bool VALID_TOKEN_BEFORE_EQ[9]       = {1, 0, 0, 0, 0, 0, 0, 0, 0};
     bool VALID_TOKEN_BEFORE_COMMA[9]    = {0, 0, 1, 1, 0, 1, 0, 0, 0};
 
+    const char *err_str = str;
     size_t cur_index = 0;
     uint8_t last_token = 8;
     size_t cur_group_stack = 0;
 
     while (true) {
-        if (str_len == 0 || str_len == (size_t)-1) return;
+        if (str_len == 0 || str_len == (size_t)-1) return 1;
         size_t necessary_index = search_til_necessary(str, str_len);
-        if (necessary_index >= str_len) return;
+        if (necessary_index >= str_len) return 1;
         str += necessary_index; str_len -= necessary_index;
+        cur_index += necessary_index;
 
         const char front = str[0];
         switch (front) {
@@ -179,12 +181,12 @@ void count_data_and_check_syntax(const char *str, size_t str_len,
         goto ERROR;
     }
 
-    return;
+    return 1;
 
 ERROR: {
     size_t line = 1, col = 1;
     for (size_t i = 0; i < cur_index; ++i) {
-        if (str[i] == '\n') {
+        if (err_str[i] == '\n') {
             ++line;
             col = 1;
         } else {
@@ -193,7 +195,7 @@ ERROR: {
     }
     printf("Spines syntax error at %zu:%zu", line, col);
 }
-    return;
+    return 0;
 }
 
 void spines_parse(SpinesContext *sc, const char *str, size_t str_len) {
@@ -216,15 +218,15 @@ void spines_parse(SpinesContext *sc, const char *str, size_t str_len) {
                                   ['\r'] = 1, ['*'] = 1, ['}'] = 1, [','] = 1 };
 
     size_t max_group_stack = 0;
-    count_data_and_check_syntax(str, str_len,
-                                IS_IDENT_CHAR,
-                                IS_NUM,
-                                IS_NOT_NUM_CHAR,
-                                &sc->idents_cap,
-                                &sc->ident_names_size,
-                                &sc->fields_cap,
-                                &sc->string_data_size,
-                                &max_group_stack);
+    if (!count_data_and_check_syntax(str, str_len,
+                                     IS_IDENT_CHAR,
+                                     IS_NUM,
+                                     IS_NOT_NUM_CHAR,
+                                     &sc->idents_cap,
+                                     &sc->ident_names_size,
+                                     &sc->fields_cap,
+                                     &sc->string_data_size,
+                                     &max_group_stack)) return;
 
     size_t buffer_size = sc->idents_cap * sizeof(SpinesIdent); // idents
     buffer_size =
