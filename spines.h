@@ -66,12 +66,7 @@ typedef struct {
 
 void spines_parse(SpinesContext *sc, const char *str_ptr, size_t str_len);
 
-inline SpinesContext SpinesContext_make(void) {
-    return (SpinesContext){0};
-}
-inline void SpinesContext_destroy(SpinesContext *sc) {
-    if (sc->buffer) free(sc->buffer);
-    sc->buffer = NULL;
-}
+SpinesContext SpinesContext_make(void);
+void SpinesContext_destroy(SpinesContext *sc);
 
 #endif

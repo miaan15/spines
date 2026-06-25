@@ -1,21 +1,14 @@
 CC = gcc
-CFLAGS = -Wall -Wextra
-
-DEBUG_FLAGS = -g -O1 -fno-omit-frame-pointer -fsanitize=address
-RELEASE_FLAGS = -O3
-
 SRC = spines.c main.c
 TARGET = a
 
-.PHONY: all debug release clean
+BUILD ?= debug
 
-all: $(TARGET)
-
-debug: CFLAGS += $(DEBUG_FLAGS)
-debug: $(TARGET)
-
-release: CFLAGS += $(RELEASE_FLAGS)
-release: $(TARGET)
+ifeq ($(BUILD),release)
+    CFLAGS = -Wall -Wextra -O3
+else
+    CFLAGS = -Wall -Wextra -g -O0
+endif
 
 $(TARGET): $(SRC)
 	$(CC) $(CFLAGS) -o $@ $^

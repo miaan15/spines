@@ -6,6 +6,14 @@
 #include <stdlib.h>
 #include <string.h>
 
+SpinesContext SpinesContext_make(void) {
+    return (SpinesContext){0};
+}
+void SpinesContext_destroy(SpinesContext *sc) {
+    if (sc->buffer) free(sc->buffer);
+    sc->buffer = NULL;
+}
+
 void buffer_init(SpinesContext *sc, size_t cap) {
     sc->buffer = malloc(cap);
     sc->buffer_offset = 0;
@@ -39,12 +47,12 @@ size_t search_til_necessary(const char *str, size_t str_len) {
 typedef struct { size_t ident; size_t next_id_ident; } GroupStackEntry;
 void handle_out_of_group(SpinesContext *sc, GroupStackEntry *stack,
                          size_t *stack_len) {
-    assert(stack_len > 0);
+    assert(*stack_len > 0);
     SpinesIdent old_ident = sc->idents[stack[*stack_len - 1].ident];
 
     --*stack_len;
 
-    if (stack_len > 0) {
+    if (*stack_len > 0) {
         SpinesIdent *cur_ident =
             &sc->idents[stack[*stack_len - 1].ident];
         cur_ident->fields_len += old_ident.fields_len;
@@ -163,7 +171,7 @@ bool count_data_and_check_syntax(const char *str, size_t str_len,
 
         // Number
         if (IS_NUM[(unsigned char)front]) {
-            if (!VALID_TOKEN_BEFORE_IDENT[last_token]) goto ERROR;
+            if (!VALID_TOKEN_BEFORE_NUM[last_token]) goto ERROR;
             size_t i = 0;
             while (i < str_len && !IS_NOT_NUM_CHAR[(unsigned char)str[i]]) {
                 ++i;
@@ -205,12 +213,12 @@ void spines_parse(SpinesContext *sc, const char *str, size_t str_len) {
     }
 
     bool IS_IDENT_CHAR[128] = {0};
-    for (char i = 'a'; i <= 'z'; ++i) IS_IDENT_CHAR[i] = 1;
-    for (char i = 'A'; i <= 'Z'; ++i) IS_IDENT_CHAR[i] = 1;
+    for (char i = 'a'; i <= 'z'; ++i) IS_IDENT_CHAR[(unsigned char)i] = 1;
+    for (char i = 'A'; i <= 'Z'; ++i) IS_IDENT_CHAR[(unsigned char)i] = 1;
     IS_IDENT_CHAR['_'] = 1;
 
     bool IS_NUM[128] = {0};
-    for (char i = '0'; i <= '9'; ++i) IS_NUM[i] = 1;
+    for (char i = '0'; i <= '9'; ++i) IS_NUM[(unsigned char)i] = 1;
     IS_NUM['-'] = 1;
     IS_NUM['.'] = 1;
 
@@ -255,7 +263,7 @@ void spines_parse(SpinesContext *sc, const char *str, size_t str_len) {
     size_t group_stack_len = 0;
 
     size_t next_ident = 0;
-    bool just_after_eq = 0;
+    uint8_t just_after_eq = 0;
 
     while (true) {
         if (str_len == 0 || str_len == (size_t)-1) return;
@@ -458,7 +466,6 @@ void spines_parse(SpinesContext *sc, const char *str, size_t str_len) {
             default: goto ERROR; break;
             }
 
-DONE_PARSE_NUM:
             ++fields_offset;
             assert(fields_offset <= sc->fields_cap);
 
