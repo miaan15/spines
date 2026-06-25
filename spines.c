@@ -196,7 +196,7 @@ ERROR: {
     return;
 }
 
-void spines_init(SpinesContext *sc, const char *str, size_t str_len) {
+void spines_parse(SpinesContext *sc, const char *str, size_t str_len) {
     if (sc->buffer) {
         printf("spines_init: already initiated");
         return;
@@ -478,7 +478,8 @@ DONE_PARSE_NUM:
     return;
 
 ERROR:
-    free(sc->buffer);
+    if (sc->buffer) free(sc->buffer);
+    sc->buffer = NULL;
     sc->idents = NULL;
     sc->field_vals = NULL;
     sc->field_types = NULL;

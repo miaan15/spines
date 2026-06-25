@@ -2,6 +2,7 @@
 #define __SPINES_H
 
 #include <stddef.h>
+#include <stdlib.h>
 #include <stdint.h>
 
 typedef enum {
@@ -63,6 +64,14 @@ typedef struct {
     size_t string_data_size;
 } SpinesContext;
 
-void spines_init(SpinesContext *sc, const char *str_ptr, size_t str_len);
+void spines_parse(SpinesContext *sc, const char *str_ptr, size_t str_len);
+
+inline SpinesContext SpinesContext_make(void) {
+    return (SpinesContext){0};
+}
+inline void SpinesContext_destroy(SpinesContext *sc) {
+    if (sc->buffer) free(sc->buffer);
+    sc->buffer = NULL;
+}
 
 #endif
