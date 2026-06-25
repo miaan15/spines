@@ -70,7 +70,7 @@ bool count_data_and_check_syntax(const char *str, size_t str_len,
                                  size_t *const string_data_size,
                                  size_t *const max_group_stack) {
     // Tokens: IDENT; ID_IDENT; NUM; STR; LBRACE; RBRACE; EQ; COMMA; NONE
-    bool VALID_TOKEN_BEFORE_IDENT[9]    = {0, 0, 1, 1, 1, 1, 0, 1, 1};
+    bool VALID_TOKEN_BEFORE_IDENT[9]    = {0, 1, 1, 1, 1, 1, 0, 1, 1};
     bool VALID_TOKEN_BEFORE_ID_IDENT[9] = {0, 1, 0, 0, 1, 1, 1, 1, 1};
     bool VALID_TOKEN_BEFORE_NUM[9]      = {0, 1, 0, 1, 1, 1, 1, 1, 1};
     bool VALID_TOKEN_BEFORE_STR[9]      = {0, 1, 0, 1, 1, 1, 1, 1, 1};
@@ -84,12 +84,15 @@ bool count_data_and_check_syntax(const char *str, size_t str_len,
     uint8_t last_token = 8;
     size_t cur_group_stack = 0;
 
+    bool flag = 0;
     while (true) {
         if (str_len == 0 || str_len == (size_t)-1) return 1;
         size_t necessary_index = search_til_necessary(str, str_len);
         if (necessary_index >= str_len) return 1;
         str += necessary_index; str_len -= necessary_index;
         cur_index += necessary_index;
+
+        flag = 0;
 
         const char front = str[0];
         switch (front) {
@@ -98,6 +101,7 @@ bool count_data_and_check_syntax(const char *str, size_t str_len,
             ++str; --str_len;
             ++cur_index;
             last_token = TOKEN_LBRACE;
+
             ++cur_group_stack;
             if (cur_group_stack > *max_group_stack)
                 *max_group_stack = cur_group_stack;
@@ -108,6 +112,7 @@ bool count_data_and_check_syntax(const char *str, size_t str_len,
             ++str; --str_len;
             ++cur_index;
             last_token = TOKEN_RBRACE;
+
             --cur_group_stack;
             if (cur_group_stack == (size_t)-1) goto ERROR;
         break;
@@ -117,6 +122,9 @@ bool count_data_and_check_syntax(const char *str, size_t str_len,
             ++str; --str_len;
             ++cur_index;
             last_token = TOKEN_EQ;
+
+            if (cur_group_stack + 1 > *max_group_stack)
+                *max_group_stack = cur_group_stack + 1;
         break;
 
         case '*':
@@ -125,6 +133,10 @@ bool count_data_and_check_syntax(const char *str, size_t str_len,
             str += 2; str_len -= 2;
             cur_index += 2;
             last_token = TOKEN_ID_IDENT;
+
+            ++cur_group_stack;
+            if (cur_group_stack > *max_group_stack)
+                *max_group_stack = cur_group_stack;
 
             ++*idents_cap;
         break;
@@ -150,8 +162,10 @@ bool count_data_and_check_syntax(const char *str, size_t str_len,
             *string_data_size += i - 1;
         } break;
 
-        default: break;
+        default: flag = 1; break;
         }
+
+        if (!flag) continue;
 
         // Ident
         if (IS_IDENT_CHAR[(unsigned char)front]) {
@@ -265,6 +279,7 @@ void spines_parse(SpinesContext *sc, const char *str, size_t str_len) {
     size_t next_ident = 0;
     uint8_t just_after_eq = 0;
 
+    bool flag = 0;
     while (true) {
         if (str_len == 0 || str_len == (size_t)-1) return;
         size_t necessary_index = search_til_necessary(str, str_len);
@@ -272,6 +287,7 @@ void spines_parse(SpinesContext *sc, const char *str, size_t str_len) {
         str += necessary_index; str_len -= necessary_index;
 
         if (just_after_eq > 0) --just_after_eq;
+        flag = 0;
 
         const char front = str[0];
         switch (front) {
@@ -303,6 +319,7 @@ void spines_parse(SpinesContext *sc, const char *str, size_t str_len) {
 
             ++group_stack[group_stack_len - 1].next_id_ident;
 
+            assert(group_stack_len < max_group_stack);
             group_stack[group_stack_len++] = (GroupStackEntry){next_ident, 0};
             ++next_ident;
 
@@ -337,8 +354,10 @@ void spines_parse(SpinesContext *sc, const char *str, size_t str_len) {
             str += i + 1; str_len -= i + 1;
         } break;
 
-        default: break;
+        default: flag = 1; break;
         }
+
+        if (!flag) continue;
 
         // Ident
         if (IS_IDENT_CHAR[(unsigned char)front]) {
@@ -357,6 +376,7 @@ void spines_parse(SpinesContext *sc, const char *str, size_t str_len) {
             ident_names_offset += i;
             assert(ident_names_offset <= sc->ident_names_size);
 
+            assert(group_stack_len < max_group_stack);
             group_stack[group_stack_len++] = (GroupStackEntry){next_ident, 0};
             ++next_ident;
 
