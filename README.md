@@ -1,5 +1,6 @@
 # Spines
 Custom config language parser
+ok this is actually not done yet
 
 # Usage
 It's just spines.c and spines.h, you're welcome.
