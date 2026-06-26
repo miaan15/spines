@@ -6,8 +6,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <chrono>
+
 SpinesContext SpinesContext_make(void) {
-    return (SpinesContext){0};
+    return SpinesContext{};
 }
 void SpinesContext_destroy(SpinesContext *sc) {
     if (sc->buffer) free(sc->buffer);
@@ -30,7 +32,11 @@ void *buffer_alloc(SpinesContext *sc, size_t size, size_t align) {
 }
 
 size_t search_til_necessary(const char *str, size_t str_len) {
-    bool IS_SPACE[128] = { [' '] = 1, ['\t'] = 1, ['\n'] = 1, ['\r'] = 1 };
+    bool IS_SPACE[128] = { 0 };
+    IS_SPACE[(unsigned char)' '] = 1;
+    IS_SPACE[(unsigned char)'\t'] = 1;
+    IS_SPACE[(unsigned char)'\n'] = 1;
+    IS_SPACE[(unsigned char)'\r'] = 1;
     size_t i = 0;
     while (i < str_len) {
         while (i < str_len && IS_SPACE[(unsigned char)str[i]]) { ++i; }
@@ -215,16 +221,19 @@ ERROR: {
             ++col;
         }
     }
-    printf("Spines syntax error at %zu:%zu", line, col);
+    printf("Spines syntax error at %zu:%zu\n", line, col);
 }
     return 0;
 }
 
 void spines_parse(SpinesContext *sc, const char *str, size_t str_len) {
     if (sc->buffer) {
-        printf("spines_init: already initiated");
+        printf("spines_init: already initiated\n");
         return;
     }
+
+    // --- TIMING: START ---
+    auto t_start = std::chrono::high_resolution_clock::now();
 
     bool IS_IDENT_CHAR[128] = {0};
     for (char i = 'a'; i <= 'z'; ++i) IS_IDENT_CHAR[(unsigned char)i] = 1;
@@ -236,10 +245,17 @@ void spines_parse(SpinesContext *sc, const char *str, size_t str_len) {
     IS_NUM['-'] = 1;
     IS_NUM['.'] = 1;
 
-    bool IS_NOT_NUM_CHAR[128] = { [' '] = 1, ['\t'] = 1, ['\n'] = 1,
-                                  ['\r'] = 1, ['*'] = 1, ['}'] = 1, [','] = 1 };
+    bool IS_NOT_NUM_CHAR[128] = { 0 };
+    IS_NOT_NUM_CHAR[(unsigned char)' ']  = 1;
+    IS_NOT_NUM_CHAR[(unsigned char)'\t'] = 1;
+    IS_NOT_NUM_CHAR[(unsigned char)'\n'] = 1;
+    IS_NOT_NUM_CHAR[(unsigned char)'\r'] = 1;
+    IS_NOT_NUM_CHAR[(unsigned char)'*']  = 1;
+    IS_NOT_NUM_CHAR[(unsigned char)'}']  = 1;
+    IS_NOT_NUM_CHAR[(unsigned char)',']  = 1;
 
     size_t max_group_stack = 0;
+
     if (!count_data_and_check_syntax(str, str_len,
                                      IS_IDENT_CHAR,
                                      IS_NUM,
@@ -249,6 +265,9 @@ void spines_parse(SpinesContext *sc, const char *str, size_t str_len) {
                                      &sc->fields_cap,
                                      &sc->string_data_size,
                                      &max_group_stack)) return;
+
+    // --- TIMING: END OF COUNTING PHASE ---
+    auto t_count_done = std::chrono::high_resolution_clock::now();
 
     size_t buffer_size = sc->idents_cap * sizeof(SpinesIdent); // idents
     buffer_size =
@@ -267,6 +286,9 @@ void spines_parse(SpinesContext *sc, const char *str, size_t str_len) {
     sc->ident_names = (char *)buffer_alloc(sc, sc->ident_names_size, 1);
     sc->string_data = (char *)buffer_alloc(sc, sc->string_data_size, 1);
 
+    // --- TIMING: END OF ALLOCATION PHASE ---
+    auto t_alloc_done = std::chrono::high_resolution_clock::now();
+
     size_t idents_offset = 0;
     size_t fields_offset = 0;
     size_t ident_names_offset = 0;
@@ -281,9 +303,9 @@ void spines_parse(SpinesContext *sc, const char *str, size_t str_len) {
 
     bool flag = 0;
     while (true) {
-        if (str_len == 0 || str_len == (size_t)-1) return;
+        if (str_len == 0 || str_len == (size_t)-1) break; // Replaced early return with break to print timers
         size_t necessary_index = search_til_necessary(str, str_len);
-        if (necessary_index >= str_len) return;
+        if (necessary_index >= str_len) break; // Replaced early return with break
         str += necessary_index; str_len -= necessary_index;
 
         if (just_after_eq > 0) --just_after_eq;
@@ -504,6 +526,22 @@ void spines_parse(SpinesContext *sc, const char *str, size_t str_len) {
         goto ERROR;
     }
 
+    // --- TIMING: END OF PARSE PHASE ---
+    {
+        auto t_parse_done = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double, std::milli> diff_count = t_count_done - t_start;
+        std::chrono::duration<double, std::milli> diff_alloc = t_alloc_done - t_count_done;
+        std::chrono::duration<double, std::milli> diff_parse = t_parse_done - t_alloc_done;
+        std::chrono::duration<double, std::milli> diff_total = t_parse_done - t_start;
+
+        printf("\n=== SPINES PARSER PROFILE ===\n");
+        printf("Phase 1 (Syntax Check & Count) : %8.4f ms\n", diff_count.count());
+        printf("Phase 2 (Memory Allocation)    : %8.4f ms\n", diff_alloc.count());
+        printf("Phase 3 (Data Extraction)      : %8.4f ms\n", diff_parse.count());
+        printf("-----------------------------------------\n");
+        printf("Total execution time           : %8.4f ms\n", diff_total.count());
+        printf("=================================\n\n");
+    }
     return;
 
 ERROR:
@@ -516,7 +554,6 @@ ERROR:
     sc->buffer_offset = sc->buffer_cap = sc->idents_cap = sc->fields_cap
         = sc->ident_names_size = sc->string_data_size = 0;
     // TODO proper error
-    printf("error, idk");
+    printf("error, idk\n");
     return;
 }
-

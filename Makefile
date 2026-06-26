@@ -1,8 +1,6 @@
 CC  = gcc
 CXX = g++
 
-TARGET = a
-
 BUILD ?= debug
 
 ifeq ($(BUILD),release)
@@ -13,9 +11,10 @@ else
     CXXFLAGS = -Wall -Wextra -g -O0
 endif
 
-OBJS = spines.o main.o
+a: spines.o main.o
+	$(CXX) -o $@ $^
 
-$(TARGET): $(OBJS)
+b: spines_bm.o main_bm.o
 	$(CXX) -o $@ $^
 
 spines.o: spines.c
@@ -24,5 +23,11 @@ spines.o: spines.c
 main.o: main.cpp
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
+spines_bm.o: spines_bm.cpp
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+
+main_bm.o: main_bm.cpp
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+
 clean:
-	rm -f $(TARGET) $(OBJS)
+	rm -f a b spines.o spines_bm.o main.o main_bm.o

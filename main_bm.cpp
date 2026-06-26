@@ -1,6 +1,4 @@
-extern "C" {
 #include "spines.h"
-}
 
 #include <cstdio>
 #include <cstring>
