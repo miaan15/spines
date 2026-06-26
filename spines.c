@@ -38,6 +38,7 @@ size_t search_til_necessary(const char *str, size_t str_len) {
         if (i + 1 < str_len && str[i] == '/' && str[i + 1] == '/') {
             while (i < str_len && str[i] != '\n') { ++i; }
             ++i;
+            continue;
         }
         break;
     }
@@ -72,8 +73,8 @@ bool count_data_and_check_syntax(const char *str, size_t str_len,
     // Tokens: IDENT; ID_IDENT; NUM; STR; LBRACE; RBRACE; EQ; COMMA; NONE
     bool VALID_TOKEN_BEFORE_IDENT[9]    = {0, 1, 1, 1, 1, 1, 0, 1, 1};
     bool VALID_TOKEN_BEFORE_ID_IDENT[9] = {0, 1, 0, 0, 1, 1, 1, 1, 1};
-    bool VALID_TOKEN_BEFORE_NUM[9]      = {0, 1, 0, 1, 1, 1, 1, 1, 1};
-    bool VALID_TOKEN_BEFORE_STR[9]      = {0, 1, 0, 1, 1, 1, 1, 1, 1};
+    bool VALID_TOKEN_BEFORE_NUM[9]      = {0, 1, 1, 1, 1, 1, 1, 1, 1};
+    bool VALID_TOKEN_BEFORE_STR[9]      = {0, 1, 1, 1, 1, 1, 1, 1, 1};
     bool VALID_TOKEN_BEFORE_LBRACE[9]   = {1, 0, 0, 0, 0, 0, 0, 0, 0};
     bool VALID_TOKEN_BEFORE_RBRACE[9]   = {0, 0, 1, 1, 0, 1, 0, 1, 0};
     bool VALID_TOKEN_BEFORE_EQ[9]       = {1, 0, 0, 0, 0, 0, 0, 0, 0};
