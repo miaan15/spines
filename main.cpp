@@ -156,47 +156,30 @@ Gravity = -9.81;
     SpinesContext_destroy(&cxt);
 }
 
-    // printf("\n\n");
-    // printf("--- IDENTS (Cap: %zu) ---\n", cxt.idents_cap);
-    // for (size_t i = 0; i < cxt.idents_cap; ++i) {
-    //     SpinesIdent p = cxt.idents[i];
-    //
-    //     if (p.name_begin != (size_t)-1) {
-    //         printf("\t %zu: [%.*s]: fields %zu - %zu | parent of %zu\n",
-    //                i,
-    //                (int)p.name_len, cxt.ident_names + p.name_begin,
-    //                p.fields_begin, p.fields_len,
-    //                p.parent_len);
-    //     } else {
-    //         printf("\t %zu: [.%zu]: fields %zu - %zu | parent of %zu\n",
-    //                i,
-    //                p.name_len,
-    //                p.fields_begin, p.fields_len,
-    //                p.parent_len);
-    //     }
-    // }
-    //
-    // printf("\n--- FIELDS (Cap: %zu) ---\n", cxt.fields_cap);
-    // for (size_t i = 0; i < cxt.fields_cap; ++i) {
-    //     SpinesField p = cxt.field_vals[i];
-    //     uint8_t t = cxt.field_types[i];
-    //
-    //     const char *name = "int";
-    //     if (t == FIELD_FLOAT) name = "float";
-    //     if (t == FIELD_STR) name = "string";
-    //
-    //     printf("\t %zu: [%s]: ", i, name);
-    //
-    //     if (t == FIELD_INT) {
-    //         printf("%lld\n", (long long)p.int_val);
-    //     } else if (t == FIELD_FLOAT) {
-    //         printf("%f\n", p.float_val);
-    //     } else if (t == FIELD_STR) {
-    //         printf("\"%.*s\"\n", (int)p.str_val.len, cxt.string_data + p.str_val.begin);
-    //     }
-    // }
+    // 200 MB
+    // =========================================================================
+{
+    size_t cnt = 1024 * 10 * 10 * 2 - 1 - 1024 - 1024 * 10 - 1024 * 10 * 10;
+    for (size_t i = 0; i < cnt; ++i) {
+        final += base_str;
+        if (i < cnt - 1) {
+            final += "\n";
+        }
+    }
+
+    auto start_time = std::chrono::high_resolution_clock::now();
+    spines_parse(&cxt, final.data(), final.length());
+    auto end_time = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double, std::milli> parse_duration = end_time - start_time;
+
+    if (!cxt.buffer) return 0;
+
+    std::cout << "200MB: " << parse_duration.count() << " ms" << std::endl;
 
     SpinesContext_destroy(&cxt);
+}
+
+    // SpinesContext_destroy(&cxt);
 
     return 0;
 }

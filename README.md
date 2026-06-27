@@ -39,26 +39,22 @@ Frame {
 
 # Run
 ```bash
-# compile C version - the true version
 make a
 ./a
 
-# compile C++ version - the benchmark version (implementation exactly like C)
-make b
-./b
-
 # add BUILD=release/BUILD=debug to control build type
-# make a BUILD=release
+# make BUILD=release
 
 # clean
 make clean
 ```
 
 # Output
-Parse speed:
+Parse speed (release build):
 ```
-1KB:   0.046829 ms
-1MB:   11.6174 ms
-10MB:  114.519 ms
-100MB: 1352.39 ms
+1KB:   0.040457 ms
+1MB:   11.0791 ms
+10MB:  126.037 ms
+100MB: 1461.12 ms
+200MB: 2995.72 ms
 ```
