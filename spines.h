@@ -64,34 +64,74 @@ typedef struct {
     size_t string_data_size;
 } spn_Context;
 
-void spn_destroy(spn_Context *cxt);
-
-void spn_parse(spn_Context *cxt, const char *str_ptr, size_t str_len);
-
 typedef struct {
     spn_Context *cxt;
     size_t index;
     spn_Field *fields;
 } spn_Group;
 
+// This is C, just remember to call this
+void spn_destroy(spn_Context *cxt);
+
+/**
+ * Minh lam tu xuong va da, ca phe, thuoc la va 250 lit do co con
+ *
+ * Con bao o trong cho ta dien vao?
+ */
+void spn_parse(spn_Context *cxt, const char *str_ptr, size_t str_len);
+
+/**
+ * Retrieves the top-level group of the context
+ */
 spn_Group spn_root(spn_Context *cxt);
 
+/**
+ * Mutates the group to a child-group
+ */
 void spn_move(spn_Group *gr, const char *dir);
 
+/**
+ * Mutates the group to an auto-indexed child-group
+ */
 void spn_move_id(spn_Group *gr, size_t id);
 
+/**
+ * Returns a new group from the child-group
+ */
 spn_Group spn_find(spn_Group *gr, const char *dir);
 
+/**
+ * Returns a new group from the child-group
+ */
 spn_Group spn_find_id(spn_Group *gr, size_t id);
 
+/**
+ * Advances group to the next sibling group (in the same level)
+ *
+ * Returns true if successful, or false if the end is reached
+ */
 bool spn_step(spn_Group *gr);
 
+/**
+ * Returns the next sibling group (in the same level)
+ */
 spn_Group spn_next(spn_Group *gr);
 
+/**
+ * Advances group to the absolute next group
+ *
+ * Returns true if successful, or false if the end is reached
+ */
 bool spn_step_flat(spn_Group *gr);
 
+/**
+ * Returns the absolute next group
+ */
 spn_Group spn_next_flat(spn_Group *gr);
 
+/**
+ * Returns the string field's data
+ */
 const char *spn_str(spn_Context *cxt, spn_Field field);
 
 #endif
