@@ -76,23 +76,22 @@ typedef struct {
 
 spn_Group spn_root(spn_Context *cxt);
 
+void spn_move(spn_Group *gr, const char *dir);
+
+void spn_move_id(spn_Group *gr, size_t id);
+
 spn_Group spn_find(spn_Group *gr, const char *dir);
 
 spn_Group spn_find_id(spn_Group *gr, size_t id);
 
-spn_Group spn_next_group(spn_Group *gr);
+bool spn_step(spn_Group *gr);
 
-spn_Group spn_group_after(spn_Group *gr);
+spn_Group spn_next(spn_Group *gr);
 
-typedef struct {
-    spn_Context *cxt;
-    size_t base_index;
-    size_t index;
-    spn_Field *fields;
-} spn_Iter;
+bool spn_step_flat(spn_Group *gr);
 
-spn_Iter spn_iter(spn_Group *gr);
+spn_Group spn_next_flat(spn_Group *gr);
 
-bool spn_next_iter(spn_Iter *it);
+const char *spn_str(spn_Context *cxt, spn_Field field);
 
 #endif

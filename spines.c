@@ -158,7 +158,7 @@ bool cal_data_and_check_syntax(const char *str, size_t str_len,
             last_token = TOKEN_STR;
 
             ++*fields_cap;
-            *string_data_size += i - 1;
+            *string_data_size += i - 1 + 1;
         } break;
 
         default: flag = 1; break;
@@ -177,7 +177,7 @@ bool cal_data_and_check_syntax(const char *str, size_t str_len,
             last_token = TOKEN_IDENT;
 
             ++*idents_cap;
-            *ident_names_size += i;
+            *ident_names_size += i + 1;
 
             continue;
         }
@@ -214,14 +214,16 @@ ERROR: {
             ++col;
         }
     }
-    printf("spn_ syntax error at %zu:%zu", line, col);
+    printf("spn_parse: syntax error at %zu:%zu\n", line, col);
+    fflush(stdout);
 }
     return 0;
 }
 
 void spn_parse(spn_Context *cxt, const char *str, size_t str_len) {
     if (cxt->buffer) {
-        printf("spn_parse: already initiated");
+        printf("spn_parse: already initiated\n");
+        fflush(stdout);
         return;
     }
 
@@ -249,6 +251,7 @@ void spn_parse(spn_Context *cxt, const char *str, size_t str_len) {
                                    &cxt->string_data_size,
                                    &max_group_stack)) return;
 
+    ++cxt->idents_cap; // global group
     size_t buffer_size = cxt->idents_cap * sizeof(spn_Ident); // idents
     buffer_size =
         (buffer_size + alignof(spn_Field) - 1) & ~(alignof(spn_Field) - 1);
@@ -266,7 +269,9 @@ void spn_parse(spn_Context *cxt, const char *str, size_t str_len) {
     cxt->ident_names = (char *)buffer_alloc(cxt, cxt->ident_names_size, 1);
     cxt->string_data = (char *)buffer_alloc(cxt, cxt->string_data_size, 1);
 
-    size_t idents_offset = 0;
+    cxt->idents[0] =
+        (spn_Ident){(size_t)-1, 0, 0, cxt->fields_cap, cxt->idents_cap};
+    size_t idents_offset = 1;
     size_t fields_offset = 0;
     size_t ident_names_offset = 0;
     size_t string_data_offset = 0;
@@ -275,7 +280,7 @@ void spn_parse(spn_Context *cxt, const char *str, size_t str_len) {
     memset(group_stack, 0, sizeof(group_stack));
     size_t group_stack_len = 0;
 
-    size_t next_ident = 0;
+    size_t next_ident = 1;
     uint8_t just_after_eq = 0;
 
     bool flag = 0;
@@ -340,7 +345,8 @@ void spn_parse(spn_Context *cxt, const char *str, size_t str_len) {
             assert(fields_offset <= cxt->fields_cap);
 
             memcpy(cxt->string_data + string_data_offset, str + 1, len);
-            string_data_offset += len;
+            cxt->string_data[len] = '\0';
+            string_data_offset += len + 1;
             assert(string_data_offset <= cxt->string_data_size);
 
             assert(group_stack_len > 0);
@@ -372,7 +378,8 @@ void spn_parse(spn_Context *cxt, const char *str, size_t str_len) {
             assert(idents_offset <= cxt->idents_cap);
 
             memcpy(cxt->ident_names + ident_names_offset, str, i);
-            ident_names_offset += i;
+            cxt->string_data[ident_names_offset + i] = '\0';
+            ident_names_offset += i + 1;
             assert(ident_names_offset <= cxt->ident_names_size);
 
             assert(group_stack_len < max_group_stack);
@@ -515,38 +522,150 @@ ERROR:
     cxt->buffer_offset = cxt->buffer_cap = cxt->idents_cap = cxt->fields_cap
         = cxt->ident_names_size = cxt->string_data_size = 0;
     // TODO proper error
-    printf("error, idk");
+    printf("error, idk\n");
+    fflush(stdout);
     return;
 }
 
 spn_Group spn_root(spn_Context *cxt) { return (spn_Group){cxt, 0, NULL}; }
 
-spn_Group spn_find(spn_Group *gr, const char *dir) {
-    assert(gr->cxt);
+void spn_move(spn_Group *gr, const char *dir) {
+    spn_Context *cxt = gr->cxt;
+    assert(cxt);
 
     bool IS_SEPARATOR[128] = { ['/'] = 1 };
     size_t new_index = gr->index;
     while (true) {
-        size_t i = 0;
-        while (!IS_SEPARATOR[(unsigned char)dir[i]] && dir[i] != '\0') { ++i; }
-        if (dir[i] == '\0') break;
+        size_t l = 0;
+        while (!IS_SEPARATOR[(unsigned char)dir[l]] && dir[l] != '\0') { ++l; }
 
+        size_t idir = (size_t)-1;
         if (dir[0] == '*') {
-            
+            idir = 0;
+            for (size_t i = 1; i < l; ++i) {
+                idir = idir * 10 + (dir[i] - '0');
+            }
         }
 
+        size_t begin = new_index + 1;
+        size_t end = new_index + cxt->idents[new_index].parent_len;
+        assert(begin <= end);
+        assert(end <= cxt->idents_cap);
+        for (size_t i = begin; i < end;) {
+            spn_Ident ident = cxt->idents[i];
+            if (idir == (size_t)-1) {
+                if (ident.name_begin != (size_t)-1 && ident.name_len == l
+                    && strncmp(dir, cxt->ident_names + ident.name_begin, l) == 0) {
+                    new_index = i;
+                    break;
+                }
+            } else {
+                if (ident.name_begin == (size_t)-1 && ident.name_len == idir) {
+                    new_index = i;
+                    break;
+                }
+            }
 
+            i += ident.parent_len;
 
-        dir += i;
+            if (i >= end) {
+                printf("spn_move: not found \"%.*s\"\n", (int)l, dir);
+                fflush(stdout);
+                return;
+            }
+        }
+
+        if (dir[l] == '\0') break;
+        dir += l + 1;
     }
+
+    gr->index = new_index;
+    gr->fields = &cxt->field_vals[cxt->idents[new_index].fields_begin];
 }
 
-spn_Group spn_find_id(spn_Group *gr, size_t id) { }
+void spn_move_id(spn_Group *gr, size_t id) {
+    spn_Context *cxt = gr->cxt;
+    assert(cxt);
 
-spn_Group spn_next_group(spn_Group *gr) { }
+    size_t new_index = gr->index;
+    size_t begin = new_index + 1;
+    size_t end = new_index + cxt->idents[new_index].parent_len;
+    assert(begin <= end);
+    assert(end <= cxt->idents_cap);
+    for (size_t i = begin; i < end;) {
+        spn_Ident ident = cxt->idents[i];
+        if (ident.name_begin == (size_t)-1 && ident.name_len == id) {
+            new_index = i;
+            break;
+        }
 
-spn_Group spn_group_after(spn_Group *gr) { }
+        i += ident.parent_len;
 
-spn_Iter spn_iter(spn_Group *gr) { }
+        if (i >= end) {
+            printf("spn_move_id: not found %zu\n", id);
+            fflush(stdout);
+            return;
+        }
+    }
 
-bool spn_next_iter(spn_Iter *it) { }
+    gr->index = new_index;
+    gr->fields = &cxt->field_vals[cxt->idents[new_index].fields_begin];
+}
+
+spn_Group spn_find(spn_Group *gr, const char *dir) {
+    spn_Group res = *gr;
+    spn_move(&res, dir);
+    return res;
+}
+
+spn_Group spn_find_id(spn_Group *gr, size_t id) {
+    spn_Group res = *gr;
+    spn_move_id(&res, id);
+    return res;
+}
+
+bool spn_step(spn_Group *gr) {
+    spn_Context *cxt = gr->cxt;
+    assert(cxt);
+
+    size_t new_index = gr->index + cxt->idents[gr->index].parent_len;
+    if (new_index >= cxt->idents_cap) {
+        return false;
+    }
+
+    gr->index = new_index;
+    gr->fields = &cxt->field_vals[cxt->idents[new_index].fields_begin];
+
+    return true;
+}
+
+spn_Group spn_next(spn_Group *gr) {
+    spn_Group res = *gr;
+    spn_step(&res);
+    return res;
+}
+
+bool spn_step_flat(spn_Group *gr) {
+    spn_Context *cxt = gr->cxt;
+    assert(cxt);
+
+    size_t new_index = gr->index + 1;
+    if (new_index >= cxt->idents_cap) {
+        return false;
+    }
+
+    gr->index = new_index;
+    gr->fields = &cxt->field_vals[cxt->idents[new_index].fields_begin];
+
+    return true;
+}
+
+spn_Group spn_next_flat(spn_Group *gr) {
+    spn_Group res = *gr;
+    spn_step_flat(&res);
+    return res;
+}
+
+const char *spn_str(spn_Context *cxt, spn_Field field) {
+    return cxt->string_data + field.str_val.begin;
+}
