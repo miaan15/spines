@@ -92,11 +92,11 @@ make BUILD=release
 make clean
 ```
 
-# Output
-Parse speed (release build):
+# Speed
+Release build - Intel(R) Core(TM) i5-10400 CPU @ 2.90GHz:
 ```
-1KB:   0.040457 ms
-1MB:   11.0791 ms
-10MB:  126.037 ms
-100MB: 1461.12 ms
+1KB:   0.076659 ms
+1MB:   28.458 ms
+10MB:  239.744 ms
+100MB: 567.836 ms
 ```
