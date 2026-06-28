@@ -1,12 +1,12 @@
-#ifndef __SPINES_H
-#define __SPINES_H
+#ifndef _SPINES_H
+#define _SPINES_H
 
+#include <stdbool.h>
 #include <stddef.h>
-#include <stdlib.h>
 #include <stdint.h>
+#include <stdlib.h>
 
 typedef enum {
-    // all the ascii can be token type
     TOKEN_IDENT = 0,
     TOKEN_ID_IDENT,
     TOKEN_NUM,
@@ -15,19 +15,19 @@ typedef enum {
     TOKEN_RBRACE,
     TOKEN_EQ,
     TOKEN_COMMA
-} SpinesTokenType;
+} spn_TokenType;
 
 typedef struct {
     uint8_t type;
     size_t len;
     size_t index;
-} SpinesToken;
+} spn_Token;
 
 typedef enum {
     FIELD_INT = 0,
     FIELD_FLOAT,
     FIELD_STR
-} SpinesFieldType;
+} spn_FieldType;
 
 typedef union {
     int64_t int_val;
@@ -35,13 +35,13 @@ typedef union {
     struct {
         uint32_t begin, len;
     } str_val;
-} SpinesField;
+} spn_Field;
 
 typedef struct {
     size_t name_begin, name_len;
     size_t fields_begin, fields_len;
     size_t parent_len;
-} SpinesIdent;
+} spn_Ident;
 
 typedef struct {
     void *buffer;
@@ -50,10 +50,10 @@ typedef struct {
 
     // Mem layout: idents -> field_vals -> field_types
     //             -> ident_names -> string_data
-    SpinesIdent *idents;
+    spn_Ident *idents;
     size_t idents_cap;
 
-    SpinesField *field_vals;
+    spn_Field *field_vals;
     uint8_t *field_types;
     size_t fields_cap;
 
@@ -62,11 +62,37 @@ typedef struct {
 
     char *string_data;
     size_t string_data_size;
-} SpinesContext;
+} spn_Context;
 
-void spines_parse(SpinesContext *sc, const char *str_ptr, size_t str_len);
+void spn_destroy(spn_Context *cxt);
 
-SpinesContext SpinesContext_make(void);
-void SpinesContext_destroy(SpinesContext *sc);
+void spn_parse(spn_Context *cxt, const char *str_ptr, size_t str_len);
+
+typedef struct {
+    spn_Context *cxt;
+    size_t index;
+    spn_Field *fields;
+} spn_Group;
+
+spn_Group spn_root(spn_Context *cxt);
+
+spn_Group spn_find(spn_Group *gr, const char *dir);
+
+spn_Group spn_find_id(spn_Group *gr, size_t id);
+
+spn_Group spn_next_group(spn_Group *gr);
+
+spn_Group spn_group_after(spn_Group *gr);
+
+typedef struct {
+    spn_Context *cxt;
+    size_t base_index;
+    size_t index;
+    spn_Field *fields;
+} spn_Iter;
+
+spn_Iter spn_iter(spn_Group *gr);
+
+bool spn_next_iter(spn_Iter *it);
 
 #endif

@@ -9,12 +9,12 @@ extern "C" {
 #include <chrono>
 
 int main() {
-    SpinesContext cxt{};
+    spn_Context cxt{};
 
     const char *base_str =
 R"(// Core Settings
 Engine {
-    Name = "Spines Custom Engine"
+    Name = "spn_ Custom Engine"
     Version = 1, 0, 4
     DebugMode = 1
 }
@@ -76,7 +76,7 @@ Gravity = -9.81;
     }
 
     auto start_time = std::chrono::high_resolution_clock::now();
-    spines_parse(&cxt, final.data(), final.length());
+    spn_parse(&cxt, final.data(), final.length());
     auto end_time = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double, std::milli> parse_duration = end_time - start_time;
 
@@ -84,7 +84,7 @@ Gravity = -9.81;
 
     std::cout << "1KB:   " << parse_duration.count() << " ms" << std::endl;
 
-    SpinesContext_destroy(&cxt);
+    spn_destroy(&cxt);
 }
 
     // 1 MB
@@ -99,7 +99,7 @@ Gravity = -9.81;
     }
 
     auto start_time = std::chrono::high_resolution_clock::now();
-    spines_parse(&cxt, final.data(), final.length());
+    spn_parse(&cxt, final.data(), final.length());
     auto end_time = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double, std::milli> parse_duration = end_time - start_time;
 
@@ -107,7 +107,7 @@ Gravity = -9.81;
 
     std::cout << "1MB:   " << parse_duration.count() << " ms" << std::endl;
 
-    SpinesContext_destroy(&cxt);
+    spn_destroy(&cxt);
 }
 
     // 10 MB
@@ -122,7 +122,7 @@ Gravity = -9.81;
     }
 
     auto start_time = std::chrono::high_resolution_clock::now();
-    spines_parse(&cxt, final.data(), final.length());
+    spn_parse(&cxt, final.data(), final.length());
     auto end_time = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double, std::milli> parse_duration = end_time - start_time;
 
@@ -130,7 +130,7 @@ Gravity = -9.81;
 
     std::cout << "10MB:  " << parse_duration.count() << " ms" << std::endl;
 
-    SpinesContext_destroy(&cxt);
+    spn_destroy(&cxt);
 }
 
     // 100 MB
@@ -145,7 +145,7 @@ Gravity = -9.81;
     }
 
     auto start_time = std::chrono::high_resolution_clock::now();
-    spines_parse(&cxt, final.data(), final.length());
+    spn_parse(&cxt, final.data(), final.length());
     auto end_time = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double, std::milli> parse_duration = end_time - start_time;
 
@@ -153,7 +153,7 @@ Gravity = -9.81;
 
     std::cout << "100MB: " << parse_duration.count() << " ms" << std::endl;
 
-    SpinesContext_destroy(&cxt);
+    spn_destroy(&cxt);
 }
 
     // 200 MB
@@ -168,7 +168,7 @@ Gravity = -9.81;
     }
 
     auto start_time = std::chrono::high_resolution_clock::now();
-    spines_parse(&cxt, final.data(), final.length());
+    spn_parse(&cxt, final.data(), final.length());
     auto end_time = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double, std::milli> parse_duration = end_time - start_time;
 
@@ -176,10 +176,10 @@ Gravity = -9.81;
 
     std::cout << "200MB: " << parse_duration.count() << " ms" << std::endl;
 
-    SpinesContext_destroy(&cxt);
+    spn_destroy(&cxt);
 }
 
-    // SpinesContext_destroy(&cxt);
+    // spn_destroy(&cxt);
 
     return 0;
 }
