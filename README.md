@@ -99,5 +99,4 @@ Parse speed (release build):
 1MB:   11.0791 ms
 10MB:  126.037 ms
 100MB: 1461.12 ms
-200MB: 2995.72 ms
 ```
