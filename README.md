@@ -73,7 +73,7 @@ printf("In Frame: *2[1] = %d; *3[2] = %d\n", v3, v4);
 // Get the group right after, which means its first child
 spn_Group frame_iter_gr = spn_next_flat(spn_find(global_gr, "Frame"));
 // Note: this is not the same as spn_next(),
-//       which will move to the next group but still the same level
+//       spn_next will move to the next 'sibling' group (the group that is the same level)
 
 // =============================================================
 // Iterate through groups
