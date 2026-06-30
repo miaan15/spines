@@ -77,7 +77,6 @@ typedef struct {
 typedef struct {
     spn_Context *cxt;
     size_t index;
-    spn_Field *fields;
 } spn_Group;
 
 /**
@@ -95,11 +94,15 @@ _SPN_INLINE void spn_destroy(spn_Context *cxt) {
  */
 void spn_parse(spn_Context *cxt, const char *str_ptr, size_t str_len);
 
+_SPN_INLINE spn_Field *spn_fields(spn_Group *gr) {
+    return &gr->cxt->field_vals[gr->cxt->idents[gr->index].fields_begin];
+}
+
 /**
  * Retrieves the top-level group of the context
  */
 _SPN_INLINE spn_Group spn_root(spn_Context *cxt) {
-    return (spn_Group){cxt, 0, NULL};
+    return (spn_Group){cxt, 0};
 }
 
 /**

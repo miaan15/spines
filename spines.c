@@ -573,7 +573,6 @@ void spn_move(spn_Group *gr, const char *dir) {
     }
 
     gr->index = new_index;
-    gr->fields = &cxt->field_vals[cxt->idents[new_index].fields_begin];
 }
 
 void spn_move_id(spn_Group *gr, size_t id) {
@@ -602,7 +601,6 @@ void spn_move_id(spn_Group *gr, size_t id) {
     }
 
     gr->index = new_index;
-    gr->fields = &cxt->field_vals[cxt->idents[new_index].fields_begin];
 }
 
 bool spn_step(spn_Group *gr) {
@@ -615,7 +613,6 @@ bool spn_step(spn_Group *gr) {
     }
 
     gr->index = new_index;
-    gr->fields = &cxt->field_vals[cxt->idents[new_index].fields_begin];
 
     return true;
 }
@@ -630,7 +627,6 @@ bool spn_step_flat(spn_Group *gr) {
     }
 
     gr->index = new_index;
-    gr->fields = &cxt->field_vals[cxt->idents[new_index].fields_begin];
 
     return true;
 }

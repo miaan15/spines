@@ -40,8 +40,8 @@ spn_Group global_gr = spn_root(&cxt);
 spn_Group sub_gr = spn_find(global_gr, "Base/Sub");
 
 // Get field data
-float v0 = (float)sub_gr.fields[0].float_val;
-float v1 = (float)sub_gr.fields[1].float_val;
+float v0 = (float)spn_fields(&sub_gr)[0].float_val;
+float v1 = (float)spn_fields(&sub_gr)[1].float_val;
 
 printf("In Base/Sub: [0] = %.2f; [1] = %.2f\n", v0, v1);
 // In Base/Sub: [0] = 6.70; [1] = 3.60
@@ -52,20 +52,22 @@ spn_Group v_gr = spn_root(&cxt);
 spn_move(&v_gr, "Base/Sub/Value");
 
 // Get the string value
-const char *vs = spn_str(&cxt, v_gr.fields[0]);
+const char *vs = spn_str(&cxt, spn_fields(&v_gr)[0]);
 
 printf("In Base/Sub/Value: %s\n", vs);
 // In Base/Sub/Value: funny nummbers
 
 // =============================================================
 // Auto indexed group: *<index>
-int v3 = (int)spn_find(global_gr, "Frame/*1").fields[0].int_val;
+spn_Group frame_2_gr = spn_find(global_gr, "Frame/*2");
+int v3 = (int)spn_fields(&frame_2_gr)[1].int_val;
 
 // Can also use number with indexed group
-int v4 = (int)spn_find_id(spn_find(global_gr, "Frame"), 3).fields[2].int_val;
+spn_Group frame_3_gr = spn_find_id(spn_find(global_gr, "Frame"), 3);
+int v4 = (int)spn_fields(&frame_3_gr)[2].int_val;
 
-printf("In Frame: *1[0] = %d; *3[2] = %d\n", v3, v4);
-// In Frame: *1[0] = 0; *3[2] = 6
+printf("In Frame: *2[1] = %d; *3[2] = %d\n", v3, v4);
+// In Frame: *2[1] = 3; *3[2] = 6
 
 // =============================================================
 // Get the group right after, which means its first child
@@ -77,15 +79,13 @@ spn_Group frame_iter_gr = spn_next_flat(spn_find(global_gr, "Frame"));
 // Iterate through groups
 printf("Iterate Frame: ");
 do {
-    int x = frame_iter_gr.fields[1].int_val;
+    int x = spn_fields(&frame_iter_gr)[1].int_val;
     printf("%d ", x);
 } while (spn_step(&frame_iter_gr));
 // Iterate Frame: 1 2 3 4 
 
 spn_destroy(&cxt); // remember to free memory because this is C
 ```
-
-
 
 # Run
 ```bash
