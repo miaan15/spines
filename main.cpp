@@ -190,7 +190,7 @@ Frame {
     spn_parse(&cxt, str, strlen(str));
 
     spn_Group global_gr = spn_root(&cxt);
-    spn_Group sub_gr = spn_find(&global_gr, "Base/Sub");
+    spn_Group sub_gr = spn_find(global_gr, "Base/Sub");
     float v0 = (float)sub_gr.fields[0].float_val;
     float v1 = (float)sub_gr.fields[1].float_val;
 
@@ -202,13 +202,12 @@ Frame {
 
     printf("In Base/Sub/Value: %s\n", vs);
 
-    int v3 = (int)spn_find(&global_gr, "Frame/*1").fields[0].int_val;
-    spn_Group frame_gr = spn_find(&global_gr, "Frame");
-    int v4 = (int)spn_find_id(&frame_gr, 3).fields[2].int_val;
+    int v3 = (int)spn_find(global_gr, "Frame/*1").fields[0].int_val;
+    int v4 = (int)spn_find_id(spn_find(global_gr, "Frame"), 3).fields[2].int_val;
 
     printf("In Frame: *1[0] = %d; *3[2] = %d\n", v3, v4);
 
-    spn_Group frame_iter_gr = spn_next_flat(&frame_gr);
+    spn_Group frame_iter_gr = spn_next_flat(spn_find(global_gr, "Frame"));
     printf("Iterate Frame: ");
     do {
         int x = frame_iter_gr.fields[1].int_val;

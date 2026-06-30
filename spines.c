@@ -8,11 +8,6 @@
 #include <string.h>
 
 // TODO fix error output
-void spn_destroy(spn_Context *cxt) {
-    if (cxt->buffer) free(cxt->buffer);
-    cxt->buffer = NULL;
-}
-
 void buffer_init(spn_Context *cxt, size_t cap) {
     cxt->buffer = malloc(cap);
     cxt->buffer_offset = 0;
@@ -527,8 +522,6 @@ ERROR:
     return;
 }
 
-spn_Group spn_root(spn_Context *cxt) { return (spn_Group){cxt, 0, NULL}; }
-
 void spn_move(spn_Group *gr, const char *dir) {
     spn_Context *cxt = gr->cxt;
     assert(cxt);
@@ -612,18 +605,6 @@ void spn_move_id(spn_Group *gr, size_t id) {
     gr->fields = &cxt->field_vals[cxt->idents[new_index].fields_begin];
 }
 
-spn_Group spn_find(spn_Group *gr, const char *dir) {
-    spn_Group res = *gr;
-    spn_move(&res, dir);
-    return res;
-}
-
-spn_Group spn_find_id(spn_Group *gr, size_t id) {
-    spn_Group res = *gr;
-    spn_move_id(&res, id);
-    return res;
-}
-
 bool spn_step(spn_Group *gr) {
     spn_Context *cxt = gr->cxt;
     assert(cxt);
@@ -639,12 +620,6 @@ bool spn_step(spn_Group *gr) {
     return true;
 }
 
-spn_Group spn_next(spn_Group *gr) {
-    spn_Group res = *gr;
-    spn_step(&res);
-    return res;
-}
-
 bool spn_step_flat(spn_Group *gr) {
     spn_Context *cxt = gr->cxt;
     assert(cxt);
@@ -658,14 +633,4 @@ bool spn_step_flat(spn_Group *gr) {
     gr->fields = &cxt->field_vals[cxt->idents[new_index].fields_begin];
 
     return true;
-}
-
-spn_Group spn_next_flat(spn_Group *gr) {
-    spn_Group res = *gr;
-    spn_step_flat(&res);
-    return res;
-}
-
-const char *spn_str(spn_Context *cxt, spn_Field field) {
-    return cxt->string_data + field.str_val.begin;
 }

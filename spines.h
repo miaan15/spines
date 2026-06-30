@@ -6,6 +6,16 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+#ifndef _SPN_INLINE
+#  if defined(__cplusplus)
+#    define _SPN_INLINE inline
+#  elif defined(__STDC_VERSION__) && __STDC_VERSION__ >= 202311L
+#    define _SPN_INLINE static inline
+#  else
+#    define _SPN_INLINE static inline
+#  endif
+#endif
+
 typedef enum {
     TOKEN_IDENT = 0,
     TOKEN_ID_IDENT,
@@ -70,8 +80,13 @@ typedef struct {
     spn_Field *fields;
 } spn_Group;
 
-// This is C, just remember to call this
-void spn_destroy(spn_Context *cxt);
+/**
+ * This is C, just remember to call this
+ */
+_SPN_INLINE void spn_destroy(spn_Context *cxt) {
+    if (cxt->buffer) free(cxt->buffer);
+    cxt->buffer = NULL;
+}
 
 /**
  * Minh lam tu xuong va da, ca phe, thuoc la va 250 lit do co con
@@ -83,7 +98,9 @@ void spn_parse(spn_Context *cxt, const char *str_ptr, size_t str_len);
 /**
  * Retrieves the top-level group of the context
  */
-spn_Group spn_root(spn_Context *cxt);
+_SPN_INLINE spn_Group spn_root(spn_Context *cxt) {
+    return (spn_Group){cxt, 0, NULL};
+}
 
 /**
  * Mutates the group to a child-group
@@ -98,12 +115,18 @@ void spn_move_id(spn_Group *gr, size_t id);
 /**
  * Returns a new group from the child-group
  */
-spn_Group spn_find(spn_Group *gr, const char *dir);
+_SPN_INLINE spn_Group spn_find(spn_Group gr, const char *dir) {
+    spn_move(&gr, dir);
+    return gr;
+}
 
 /**
  * Returns a new group from the child-group
  */
-spn_Group spn_find_id(spn_Group *gr, size_t id);
+_SPN_INLINE spn_Group spn_find_id(spn_Group gr, size_t id) {
+    spn_move_id(&gr, id);
+    return gr;
+}
 
 /**
  * Advances group to the next sibling group (in the same level)
@@ -115,7 +138,10 @@ bool spn_step(spn_Group *gr);
 /**
  * Returns the next sibling group (in the same level)
  */
-spn_Group spn_next(spn_Group *gr);
+_SPN_INLINE spn_Group spn_next(spn_Group gr) {
+    spn_step(&gr);
+    return gr;
+}
 
 /**
  * Advances group to the absolute next group
@@ -127,11 +153,16 @@ bool spn_step_flat(spn_Group *gr);
 /**
  * Returns the absolute next group
  */
-spn_Group spn_next_flat(spn_Group *gr);
+_SPN_INLINE spn_Group spn_next_flat(spn_Group gr) {
+    spn_step_flat(&gr);
+    return gr;
+}
 
 /**
  * Returns the string field's data
  */
-const char *spn_str(spn_Context *cxt, spn_Field field);
+_SPN_INLINE const char *spn_str(spn_Context *cxt, spn_Field field) {
+    return cxt->string_data + field.str_val.begin;
+}
 
 #endif
