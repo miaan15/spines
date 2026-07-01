@@ -190,32 +190,32 @@ Frame {
     spn_Context cxt = {};
     spn_parse(&cxt, str, strlen(str));
 
-    spn_Mark global_gr = spn_root(&cxt);
-    spn_Mark sub_gr = spn_find(global_gr, "Base/Sub");
-    float v0 = (float)spn_fields(&sub_gr)[0].float_val;
-    float v1 = (float)spn_fields(&sub_gr)[1].float_val;
+    spn_Mark global_mk = spn_root(&cxt);
+    spn_Mark sub_mk = spn_find(global_mk, "Base/Sub");
+    float v0 = (float)spn_fields(&sub_mk)[0].float_val;
+    float v1 = (float)spn_fields(&sub_mk)[1].float_val;
 
     printf("In Base/Sub: [0] = %.2f; [1] = %.2f\n", v0, v1);
 
-    spn_Mark v_gr = spn_root(&cxt);
-    spn_move(&v_gr, "Base/Sub/Value");
-    const char *vs = spn_str(&cxt, spn_fields(&v_gr)[0]);
+    spn_Mark v_mk = spn_root(&cxt);
+    spn_move(&v_mk, "Base/Sub/Value");
+    const char *vs = spn_str(&cxt, spn_fields(&v_mk)[0]);
 
     printf("In Base/Sub/Value: %s\n", vs);
 
-    spn_Mark frame_2_gr = spn_find(global_gr, "Frame/*2");
-    int v3 = (int)spn_fields(&frame_2_gr)[1].int_val;
-    spn_Mark frame_3_gr = spn_find_id(spn_find(global_gr, "Frame"), 3);
-    int v4 = (int)spn_fields(&frame_3_gr)[2].int_val;
+    spn_Mark frame_2_mk = spn_find(global_mk, "Frame/*2");
+    int v3 = (int)spn_fields(&frame_2_mk)[1].int_val;
+    spn_Mark frame_3_mk = spn_find_id(spn_find(global_mk, "Frame"), 3);
+    int v4 = (int)spn_fields(&frame_3_mk)[2].int_val;
 
     printf("In Frame: *2[1] = %d; *3[2] = %d\n", v3, v4);
 
-    spn_Mark frame_iter_gr = spn_next_flat(spn_find(global_gr, "Frame"));
+    spn_Mark frame_iter_mk = spn_next_flat(spn_find(global_mk, "Frame"));
     printf("Iterate Frame: ");
     do {
-        int x = spn_fields(&frame_iter_gr)[1].int_val;
+        int x = spn_fields(&frame_iter_mk)[1].int_val;
         printf("%d ", x);
-    } while (spn_step(&frame_iter_gr));
+    } while (spn_step(&frame_iter_mk));
 
     spn_destroy(&cxt);
 
