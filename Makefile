@@ -11,8 +11,8 @@ else
     CXXFLAGS = -Wall -Wextra -g -O0
 endif
 
-a: spines.o main.o
-	$(CXX) -o $@ $^
+a: spines.o main.o spines.c main.cpp
+	$(CXX) -o $@ spines.o main.o
 
 spines.o: spines.c
 	$(CC) $(CFLAGS) -c $< -o $@

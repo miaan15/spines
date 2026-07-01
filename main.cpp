@@ -216,6 +216,9 @@ Frame {
         printf("%d ", x);
     } while (spn_step(&frame_iter_gr));
 
+    spn_parse(&cxt, "dsadhwuq", 5);
+    std::cout << "\n\n>" << SPN_ERROR << std::endl;
+
     spn_destroy(&cxt);
 
     return 0;

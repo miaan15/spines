@@ -7,7 +7,13 @@
 #include <stdlib.h>
 #include <string.h>
 
-// TODO fix error output
+#ifndef SPN_DISABLE_ERROR
+char _spn_err_buffer[128] = "";
+#   define _SET_ERR_CODE(err_code, val) (err_code = val)
+#else
+#   define _SET_ERR_CODE(err_code, val) ((void)0)
+#endif
+
 void buffer_init(spn_Context *cxt, size_t cap) {
     cxt->buffer = malloc(cap);
     cxt->buffer_offset = 0;
@@ -73,7 +79,11 @@ bool cal_data_and_check_syntax(const char *str, size_t str_len,
     bool VALID_TOKEN_BEFORE_EQ[9]       = {1, 0, 0, 0, 0, 0, 0, 0, 0};
     bool VALID_TOKEN_BEFORE_COMMA[9]    = {0, 0, 1, 1, 0, 1, 0, 0, 0};
 
+#ifndef SPN_DISABLE_ERROR
     const char *err_str = str;
+    char err_code = 0;
+#endif
+
     size_t cur_index = 0;
     uint8_t last_token = 8;
     size_t cur_group_stack = 0;
@@ -107,8 +117,11 @@ bool cal_data_and_check_syntax(const char *str, size_t str_len,
             ++cur_index;
             last_token = TOKEN_RBRACE;
 
+            if (cur_group_stack == 0) {
+                _SET_ERR_CODE(err_code, 1);
+                goto ERROR;
+            }
             --cur_group_stack;
-            if (cur_group_stack == (size_t)-1) goto ERROR;
         break;
 
         case '=':
@@ -147,7 +160,10 @@ bool cal_data_and_check_syntax(const char *str, size_t str_len,
             size_t i = 1;
             while (i < str_len && str[i] != '\"') { ++i; }
 
-            if (i >= str_len) goto ERROR;
+            if (i >= str_len) {
+                _SET_ERR_CODE(err_code, 2);
+                goto ERROR;
+            }
             str += i + 1; str_len -= i + 1;
             cur_index += i + 1;
             last_token = TOKEN_STR;
@@ -200,6 +216,7 @@ bool cal_data_and_check_syntax(const char *str, size_t str_len,
     return 1;
 
 ERROR: {
+#ifndef SPN_DISABLE_ERROR
     size_t line = 1, col = 1;
     for (size_t i = 0; i < cur_index; ++i) {
         if (err_str[i] == '\n') {
@@ -209,16 +226,22 @@ ERROR: {
             ++col;
         }
     }
-    printf("spn_parse: syntax error at %zu:%zu\n", line, col);
-    fflush(stdout);
+
+    if (err_code == 1) {
+        _SPN_SET_ERROR("spn_parse(): redundant \"}\" symbol at %zu:%zu", line, col);
+    } else if (err_code == 2) {
+        _SPN_SET_ERROR("spn_parse(): forgot to close string with \" at %zu:%zu", line, col);
+    } else {
+        _SPN_SET_ERROR("spn_parse(): syntax error at %zu:%zu", line, col);
+    }
+#endif
 }
     return 0;
 }
 
 void spn_parse(spn_Context *cxt, const char *str, size_t str_len) {
     if (cxt->buffer) {
-        printf("spn_parse: already initiated\n");
-        fflush(stdout);
+        _SPN_SET_ERROR("spn_parse(): spn_Context already initiated%s", "");
         return;
     }
 
@@ -271,6 +294,13 @@ void spn_parse(spn_Context *cxt, const char *str, size_t str_len) {
     size_t ident_names_offset = 0;
     size_t string_data_offset = 0;
 
+#ifndef SPN_DISABLE_ERROR
+    const char *err_str = str;
+    char err_code = 0;
+#endif
+
+    size_t cur_index = 0;
+
     GroupStackEntry group_stack[max_group_stack];
     memset(group_stack, 0, sizeof(group_stack));
     size_t group_stack_len = 0;
@@ -284,6 +314,7 @@ void spn_parse(spn_Context *cxt, const char *str, size_t str_len) {
         size_t necessary_index = search_til_necessary(str, str_len);
         if (necessary_index >= str_len) return;
         str += necessary_index; str_len -= necessary_index;
+        cur_index += necessary_index;
 
         if (just_after_eq > 0) --just_after_eq;
         flag = 0;
@@ -293,17 +324,20 @@ void spn_parse(spn_Context *cxt, const char *str, size_t str_len) {
         case '{':
         case ',':
             ++str; --str_len;
+            ++cur_index;
         break;
 
         case '=':
             just_after_eq = 2;
             ++str; --str_len;
+            ++cur_index;
         break;
 
         // End group
         case '}':
             handle_out_of_group(cxt, group_stack, &group_stack_len);
             ++str; --str_len;
+            ++cur_index;
         break;
 
         // ID Ident
@@ -323,6 +357,7 @@ void spn_parse(spn_Context *cxt, const char *str, size_t str_len) {
             ++next_ident;
 
             str += 2; str_len -= 2;
+            cur_index += 2;
         break;
 
         // String
@@ -352,6 +387,7 @@ void spn_parse(spn_Context *cxt, const char *str, size_t str_len) {
                 handle_out_of_group(cxt, group_stack, &group_stack_len);
 
             str += i + 1; str_len -= i + 1;
+            cur_index += i + 1;
         } break;
 
         default: flag = 1; break;
@@ -382,6 +418,7 @@ void spn_parse(spn_Context *cxt, const char *str, size_t str_len) {
             ++next_ident;
 
             str += i; str_len -= i;
+            cur_index += i;
 
             continue;
         }
@@ -484,7 +521,10 @@ void spn_parse(spn_Context *cxt, const char *str, size_t str_len) {
                 cxt->field_vals[fields_offset].int_val = val * sign;
             } break;
 
-            default: goto ERROR; break;
+            default:
+                _SET_ERR_CODE(err_code, 1);
+                goto ERROR;
+            break;
             }
 
             ++fields_offset;
@@ -498,16 +538,18 @@ void spn_parse(spn_Context *cxt, const char *str, size_t str_len) {
                 handle_out_of_group(cxt, group_stack, &group_stack_len);
 
             str += i; str_len -= i;
+            cur_index += i;
 
             continue;
         }
 
+        _SET_ERR_CODE(err_code, 1);
         goto ERROR;
     }
 
     return;
 
-ERROR:
+ERROR: {
     if (cxt->buffer) free(cxt->buffer);
     cxt->buffer = NULL;
     cxt->idents = NULL;
@@ -516,15 +558,32 @@ ERROR:
     cxt->ident_names = cxt->string_data = NULL;
     cxt->buffer_offset = cxt->buffer_cap = cxt->idents_cap = cxt->fields_cap
         = cxt->ident_names_size = cxt->string_data_size = 0;
-    // TODO proper error
-    printf("error, idk\n");
-    fflush(stdout);
+
+#ifndef SPN_DISABLE_ERROR
+    size_t line = 1, col = 1;
+    for (size_t i = 0; i < cur_index; ++i) {
+        if (err_str[i] == '\n') {
+            ++line;
+            col = 1;
+        } else {
+            ++col;
+        }
+    }
+
+    if (err_code == 1) {
+        _SPN_SET_ERROR("spn_parse(): syntax error at %zu:%zu", line, col);
+    } else {
+        _SPN_SET_ERROR("spn_parse(): number format error at %zu:%zu", line, col);
+    }
+#endif
+}
     return;
 }
 
 void spn_move(spn_Group *gr, const char *dir) {
     spn_Context *cxt = gr->cxt;
     assert(cxt);
+    assert(cxt->buffer);
 
     bool IS_SEPARATOR[128] = { ['/'] = 1 };
     size_t new_index = gr->index;
@@ -562,8 +621,7 @@ void spn_move(spn_Group *gr, const char *dir) {
             i += ident.parent_len;
 
             if (i >= end) {
-                printf("spn_move: not found \"%.*s\"\n", (int)l, dir);
-                fflush(stdout);
+                _SPN_SET_ERROR("spn_move(): not found \"%.*s\"\n", (int)l, dir);
                 return;
             }
         }
@@ -578,6 +636,7 @@ void spn_move(spn_Group *gr, const char *dir) {
 void spn_move_id(spn_Group *gr, size_t id) {
     spn_Context *cxt = gr->cxt;
     assert(cxt);
+    assert(cxt->buffer);
 
     size_t new_index = gr->index;
     size_t begin = new_index + 1;
@@ -594,8 +653,7 @@ void spn_move_id(spn_Group *gr, size_t id) {
         i += ident.parent_len;
 
         if (i >= end) {
-            printf("spn_move_id: not found %zu\n", id);
-            fflush(stdout);
+            _SPN_SET_ERROR("spn_move_id(): not found %zu\n", id);
             return;
         }
     }
@@ -606,6 +664,7 @@ void spn_move_id(spn_Group *gr, size_t id) {
 bool spn_step(spn_Group *gr) {
     spn_Context *cxt = gr->cxt;
     assert(cxt);
+    assert(cxt->buffer);
 
     size_t new_index = gr->index + cxt->idents[gr->index].parent_len;
     if (new_index >= cxt->idents_cap) {
@@ -620,6 +679,7 @@ bool spn_step(spn_Group *gr) {
 bool spn_step_flat(spn_Group *gr) {
     spn_Context *cxt = gr->cxt;
     assert(cxt);
+    assert(cxt->buffer);
 
     size_t new_index = gr->index + 1;
     if (new_index >= cxt->idents_cap) {

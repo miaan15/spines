@@ -7,13 +7,21 @@
 #include <stdlib.h>
 
 #ifndef _SPN_INLINE
-#  if defined(__cplusplus)
-#    define _SPN_INLINE inline
-#  elif defined(__STDC_VERSION__) && __STDC_VERSION__ >= 202311L
-#    define _SPN_INLINE static inline
-#  else
-#    define _SPN_INLINE static inline
-#  endif
+#   if defined(__cplusplus)
+#       define _SPN_INLINE inline
+#   else
+#       define _SPN_INLINE static inline
+#   endif
+#endif
+
+#ifndef SPN_DISABLE_ERROR
+    extern char _spn_err_buffer[128];
+    #define _SPN_SET_ERROR(format, ...) \
+        snprintf(_spn_err_buffer, sizeof(_spn_err_buffer), format, __VA_ARGS__)
+    #define SPN_ERROR (_spn_err_buffer)
+#else
+    #define _SPN_SET_ERROR(format, ...) ((void)0)
+    #define SPN_ERROR ("")
 #endif
 
 typedef enum {
@@ -107,16 +115,22 @@ _SPN_INLINE spn_Group spn_root(spn_Context *cxt) {
 
 /**
  * Mutates the group to a child-group
+ *
+ * Do nothing if error
  */
 void spn_move(spn_Group *gr, const char *dir);
 
 /**
  * Mutates the group to an auto-indexed child-group
+ *
+ * Do nothing if error
  */
 void spn_move_id(spn_Group *gr, size_t id);
 
 /**
  * Returns a new group from the child-group
+ *
+ * Return the same as original group if error
  */
 _SPN_INLINE spn_Group spn_find(spn_Group gr, const char *dir) {
     spn_move(&gr, dir);
@@ -125,6 +139,8 @@ _SPN_INLINE spn_Group spn_find(spn_Group gr, const char *dir) {
 
 /**
  * Returns a new group from the child-group
+ *
+ * Return the same as original group if error
  */
 _SPN_INLINE spn_Group spn_find_id(spn_Group gr, size_t id) {
     spn_move_id(&gr, id);
@@ -134,12 +150,14 @@ _SPN_INLINE spn_Group spn_find_id(spn_Group gr, size_t id) {
 /**
  * Advances group to the next sibling group (in the same level)
  *
- * Returns true if successful, or false if the end is reached
+ * Returns false and do nothing if the end is reached
  */
 bool spn_step(spn_Group *gr);
 
 /**
  * Returns the next sibling group (in the same level)
+ *
+ * Return the same as original group if error
  */
 _SPN_INLINE spn_Group spn_next(spn_Group gr) {
     spn_step(&gr);
@@ -149,12 +167,14 @@ _SPN_INLINE spn_Group spn_next(spn_Group gr) {
 /**
  * Advances group to the absolute next group
  *
- * Returns true if successful, or false if the end is reached
+ * Returns false and do nothing if the end is reached
  */
 bool spn_step_flat(spn_Group *gr);
 
 /**
  * Returns the absolute next group
+ *
+ * Return the same as original group if error
  */
 _SPN_INLINE spn_Group spn_next_flat(spn_Group gr) {
     spn_step_flat(&gr);
