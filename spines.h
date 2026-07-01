@@ -15,13 +15,13 @@
 #endif
 
 #ifndef SPN_DISABLE_ERROR
-    extern char _spn_err_buffer[128];
-    #define _SPN_SET_ERROR(format, ...) \
-        snprintf(_spn_err_buffer, sizeof(_spn_err_buffer), format, __VA_ARGS__)
-    #define SPN_ERROR (_spn_err_buffer)
+extern char _spn_err_buffer[128];
+#define _SPN_SET_ERROR(format, ...) \
+    snprintf(_spn_err_buffer, sizeof(_spn_err_buffer), format, __VA_ARGS__)
+_SPN_INLINE const char *spn_error(void) { return _spn_err_buffer; }
 #else
-    #define _SPN_SET_ERROR(format, ...) ((void)0)
-    #define SPN_ERROR ("")
+#define _SPN_SET_ERROR(format, ...) ((void)0)
+_SPN_INLINE const char *spn_error(void) { return ""; }
 #endif
 
 typedef enum {
