@@ -7,6 +7,11 @@
 #include <stdlib.h>
 #include <string.h>
 
+// TODO:
+// - Remove '='
+// - Change '*{' to just '*'
+// - Make ',' optional
+
 #ifndef SPN_DISABLE_ERROR
 char _spn_err_buffer[128] = "";
 #   define _SET_ERR_CODE(err_code, val) (err_code = val)
@@ -44,8 +49,8 @@ size_t search_til_necessary(const char *str, size_t str_len) {
     return i;
 }
 
-typedef struct { size_t ident; size_t next_id_ident; } GroupStackEntry;
-void handle_out_of_group(spn_Context *cxt, GroupStackEntry *stack,
+typedef struct { size_t ident; size_t next_id_ident; } MarkStackEntry;
+void handle_out_of_mark(spn_Context *cxt, MarkStackEntry *stack,
                          size_t *stack_len) {
     assert(*stack_len > 0);
     spn_Ident old_ident = cxt->idents[stack[*stack_len - 1].ident];
@@ -68,15 +73,15 @@ bool cal_data_and_check_syntax(const char *str, size_t str_len,
                                  size_t *const ident_names_size,
                                  size_t *const fields_cap,
                                  size_t *const string_data_size,
-                                 size_t *const max_group_stack) {
-    // Tokens: IDENT; ID_IDENT; NUM; STR; LBRACE; RBRACE; EQ; COMMA; NONE
-    bool VALID_TOKEN_BEFORE_IDENT[9]    = {0, 1, 1, 1, 1, 1, 0, 1, 1};
-    bool VALID_TOKEN_BEFORE_ID_IDENT[9] = {0, 1, 0, 0, 1, 1, 1, 1, 1};
-    bool VALID_TOKEN_BEFORE_NUM[9]      = {0, 1, 1, 1, 1, 1, 1, 1, 1};
-    bool VALID_TOKEN_BEFORE_STR[9]      = {0, 1, 1, 1, 1, 1, 1, 1, 1};
-    bool VALID_TOKEN_BEFORE_LBRACE[9]   = {1, 0, 0, 0, 0, 0, 0, 0, 0};
+                                 size_t *const max_mark_stack) {
+    // Tokens: IDENT; ID_IDENT; NUM; STR; LBRACE; RBRACE; COLON; COMMA; NONE
+    bool VALID_TOKEN_BEFORE_IDENT[9]    = {0, 0, 1, 1, 1, 1, 0, 1, 1};
+    bool VALID_TOKEN_BEFORE_ID_IDENT[9] = {0, 0, 1, 1, 1, 1, 0, 1, 1};
+    bool VALID_TOKEN_BEFORE_NUM[9]      = {1, 1, 1, 1, 1, 1, 1, 1, 1};
+    bool VALID_TOKEN_BEFORE_STR[9]      = {1, 1, 1, 1, 1, 1, 1, 1, 1};
+    bool VALID_TOKEN_BEFORE_LBRACE[9]   = {1, 1, 0, 0, 0, 0, 1, 0, 0};
     bool VALID_TOKEN_BEFORE_RBRACE[9]   = {0, 0, 1, 1, 0, 1, 0, 1, 0};
-    bool VALID_TOKEN_BEFORE_EQ[9]       = {1, 0, 0, 0, 0, 0, 0, 0, 0};
+    bool VALID_TOKEN_BEFORE_COLON[9]    = {1, 1, 0, 0, 0, 0, 0, 0, 0};
     bool VALID_TOKEN_BEFORE_COMMA[9]    = {0, 0, 1, 1, 0, 1, 0, 0, 0};
 
 #ifndef SPN_DISABLE_ERROR
@@ -86,9 +91,9 @@ bool cal_data_and_check_syntax(const char *str, size_t str_len,
 
     size_t cur_index = 0;
     uint8_t last_token = 8;
-    size_t cur_group_stack = 0;
+    size_t cur_mark_stack = 0;
 
-    bool flag = 0;
+    bool found_token = 1;
     while (true) {
         if (str_len == 0 || str_len == (size_t)-1) return 1;
         size_t necessary_index = search_til_necessary(str, str_len);
@@ -96,7 +101,7 @@ bool cal_data_and_check_syntax(const char *str, size_t str_len,
         str += necessary_index; str_len -= necessary_index;
         cur_index += necessary_index;
 
-        flag = 0;
+        found_token = 1;
 
         const char front = str[0];
         switch (front) {
@@ -106,9 +111,9 @@ bool cal_data_and_check_syntax(const char *str, size_t str_len,
             ++cur_index;
             last_token = TOKEN_LBRACE;
 
-            ++cur_group_stack;
-            if (cur_group_stack > *max_group_stack)
-                *max_group_stack = cur_group_stack;
+            ++cur_mark_stack;
+            if (cur_mark_stack > *max_mark_stack)
+                *max_mark_stack = cur_mark_stack;
         break;
 
         case '}':
@@ -117,35 +122,32 @@ bool cal_data_and_check_syntax(const char *str, size_t str_len,
             ++cur_index;
             last_token = TOKEN_RBRACE;
 
-            if (cur_group_stack == 0) {
+            if (cur_mark_stack == 0) {
                 _SET_ERR_CODE(err_code, 1);
                 goto ERROR;
             }
-            --cur_group_stack;
-        break;
-
-        case '=':
-            if (!VALID_TOKEN_BEFORE_EQ[last_token]) goto ERROR;
-            ++str; --str_len;
-            ++cur_index;
-            last_token = TOKEN_EQ;
-
-            if (cur_group_stack + 1 > *max_group_stack)
-                *max_group_stack = cur_group_stack + 1;
+            --cur_mark_stack;
         break;
 
         case '*':
             if (!VALID_TOKEN_BEFORE_ID_IDENT[last_token]) goto ERROR;
-            if (str_len < 2 && str[1] != '{') goto ERROR;
-            str += 2; str_len -= 2;
-            cur_index += 2;
+
+            ++str; --str_len;
+            ++cur_index;
             last_token = TOKEN_ID_IDENT;
 
-            ++cur_group_stack;
-            if (cur_group_stack > *max_group_stack)
-                *max_group_stack = cur_group_stack;
-
             ++*idents_cap;
+
+            if (cur_mark_stack + 1 > *max_mark_stack)
+                *max_mark_stack = cur_mark_stack + 1;
+        break;
+
+        case ':':
+            if (!VALID_TOKEN_BEFORE_COLON[last_token]) goto ERROR;
+
+            ++str; --str_len;
+            ++cur_index;
+            last_token = TOKEN_COLON;
         break;
 
         case ',':
@@ -172,10 +174,10 @@ bool cal_data_and_check_syntax(const char *str, size_t str_len,
             *string_data_size += i - 1 + 1;
         } break;
 
-        default: flag = 1; break;
+        default: found_token = 0; break;
         }
 
-        if (!flag) continue;
+        if (found_token) continue;
 
         // Ident
         if (IS_IDENT_CHAR[(unsigned char)front]) {
@@ -189,6 +191,9 @@ bool cal_data_and_check_syntax(const char *str, size_t str_len,
 
             ++*idents_cap;
             *ident_names_size += i + 1;
+
+            if (cur_mark_stack + 1 > *max_mark_stack)
+                *max_mark_stack = cur_mark_stack + 1;
 
             continue;
         }
@@ -255,10 +260,10 @@ void spn_parse(spn_Context *cxt, const char *str, size_t str_len) {
     IS_NUM['-'] = 1;
     IS_NUM['.'] = 1;
 
-    bool IS_NOT_NUM_CHAR[128] = { [' '] = 1, ['\t'] = 1, ['\n'] = 1,
-                                  ['\r'] = 1, ['*'] = 1, ['}'] = 1, [','] = 1 };
+    bool IS_NOT_NUM_CHAR[128] = { [' '] = 1, ['\t'] = 1, ['\n'] = 1, ['\r'] = 1,
+                                  ['}'] = 1, [','] = 1 };
 
-    size_t max_group_stack = 0;
+    size_t max_mark_stack = 0;
     if (!cal_data_and_check_syntax(str, str_len,
                                    IS_IDENT_CHAR,
                                    IS_NUM,
@@ -267,9 +272,9 @@ void spn_parse(spn_Context *cxt, const char *str, size_t str_len) {
                                    &cxt->ident_names_size,
                                    &cxt->fields_cap,
                                    &cxt->string_data_size,
-                                   &max_group_stack)) return;
+                                   &max_mark_stack)) return;
 
-    ++cxt->idents_cap; // global group
+    ++cxt->idents_cap; // global mark
     size_t buffer_size = cxt->idents_cap * sizeof(spn_Ident); // idents
     buffer_size =
         (buffer_size + alignof(spn_Field) - 1) & ~(alignof(spn_Field) - 1);
@@ -301,14 +306,15 @@ void spn_parse(spn_Context *cxt, const char *str, size_t str_len) {
 
     size_t cur_index = 0;
 
-    GroupStackEntry group_stack[max_group_stack];
-    memset(group_stack, 0, sizeof(group_stack));
-    size_t group_stack_len = 0;
+    MarkStackEntry mark_stack[max_mark_stack];
+    memset(mark_stack, 0, sizeof(mark_stack));
+    size_t mark_stack_len = 0;
 
     size_t next_ident = 1;
-    uint8_t just_after_eq = 0;
+    uint8_t just_after_ident = 0;
+    bool auto_close_mark = 0;
 
-    bool flag = 0;
+    bool found_token = 1;
     while (true) {
         if (str_len == 0 || str_len == (size_t)-1) return;
         size_t necessary_index = search_til_necessary(str, str_len);
@@ -316,48 +322,51 @@ void spn_parse(spn_Context *cxt, const char *str, size_t str_len) {
         str += necessary_index; str_len -= necessary_index;
         cur_index += necessary_index;
 
-        if (just_after_eq > 0) --just_after_eq;
-        flag = 0;
+        found_token = 1;
 
         const char front = str[0];
+        if (just_after_ident > 0 && !(just_after_ident && front == ':'))
+            --just_after_ident;
         switch (front) {
         case '{':
         case ',':
+        case ':':
             ++str; --str_len;
             ++cur_index;
         break;
 
-        case '=':
-            just_after_eq = 2;
-            ++str; --str_len;
-            ++cur_index;
-        break;
-
-        // End group
+        // End mark
         case '}':
-            handle_out_of_group(cxt, group_stack, &group_stack_len);
+            handle_out_of_mark(cxt, mark_stack, &mark_stack_len);
             ++str; --str_len;
             ++cur_index;
         break;
 
         // ID Ident
         case '*':
+            if (auto_close_mark) {
+                handle_out_of_mark(cxt, mark_stack, &mark_stack_len);
+                auto_close_mark = 0;
+            }
+
             cxt->idents[idents_offset++] = (spn_Ident){
                 .name_begin = (size_t)-1,
-                .name_len = group_stack[group_stack_len - 1].next_id_ident,
+                .name_len = mark_stack[mark_stack_len - 1].next_id_ident,
                 .fields_begin = fields_offset,
                 .fields_len = 0,
                 .parent_len = 1};
             assert(idents_offset <= cxt->idents_cap);
 
-            ++group_stack[group_stack_len - 1].next_id_ident;
+            ++mark_stack[mark_stack_len - 1].next_id_ident;
 
-            assert(group_stack_len < max_group_stack);
-            group_stack[group_stack_len++] = (GroupStackEntry){next_ident, 0};
+            assert(mark_stack_len < max_mark_stack);
+            mark_stack[mark_stack_len++] = (MarkStackEntry){next_ident, 0};
             ++next_ident;
 
-            str += 2; str_len -= 2;
-            cur_index += 2;
+            just_after_ident = 2;
+
+            ++str; --str_len;
+            ++cur_index;
         break;
 
         // String
@@ -379,24 +388,28 @@ void spn_parse(spn_Context *cxt, const char *str, size_t str_len) {
             string_data_offset += len + 1;
             assert(string_data_offset <= cxt->string_data_size);
 
-            assert(group_stack_len > 0);
-            assert(group_stack[group_stack_len - 1].ident < idents_offset);
-            ++cxt->idents[group_stack[group_stack_len - 1].ident].fields_len;
+            assert(mark_stack_len > 0);
+            assert(mark_stack[mark_stack_len - 1].ident < idents_offset);
+            ++cxt->idents[mark_stack[mark_stack_len - 1].ident].fields_len;
 
-            if (just_after_eq)
-                handle_out_of_group(cxt, group_stack, &group_stack_len);
+            if (just_after_ident) auto_close_mark = 1;
 
             str += i + 1; str_len -= i + 1;
             cur_index += i + 1;
         } break;
 
-        default: flag = 1; break;
+        default: found_token = 0; break;
         }
 
-        if (!flag) continue;
+        if (found_token) continue;
 
         // Ident
         if (IS_IDENT_CHAR[(unsigned char)front]) {
+            if (auto_close_mark) {
+                handle_out_of_mark(cxt, mark_stack, &mark_stack_len);
+                auto_close_mark = 0;
+            }
+
             size_t i = 0;
             while (i < str_len && IS_IDENT_CHAR[(unsigned char)str[i]]) { ++i; }
 
@@ -413,9 +426,11 @@ void spn_parse(spn_Context *cxt, const char *str, size_t str_len) {
             ident_names_offset += i + 1;
             assert(ident_names_offset <= cxt->ident_names_size);
 
-            assert(group_stack_len < max_group_stack);
-            group_stack[group_stack_len++] = (GroupStackEntry){next_ident, 0};
+            assert(mark_stack_len < max_mark_stack);
+            mark_stack[mark_stack_len++] = (MarkStackEntry){next_ident, 0};
             ++next_ident;
+
+            just_after_ident = 2;
 
             str += i; str_len -= i;
             cur_index += i;
@@ -530,12 +545,11 @@ void spn_parse(spn_Context *cxt, const char *str, size_t str_len) {
             ++fields_offset;
             assert(fields_offset <= cxt->fields_cap);
 
-            assert(group_stack_len > 0);
-            assert(group_stack[group_stack_len - 1].ident < idents_offset);
-            ++cxt->idents[group_stack[group_stack_len - 1].ident].fields_len;
+            assert(mark_stack_len > 0);
+            assert(mark_stack[mark_stack_len - 1].ident < idents_offset);
+            ++cxt->idents[mark_stack[mark_stack_len - 1].ident].fields_len;
 
-            if (just_after_eq)
-                handle_out_of_group(cxt, group_stack, &group_stack_len);
+            if (just_after_ident) auto_close_mark = 1;
 
             str += i; str_len -= i;
             cur_index += i;
@@ -580,7 +594,7 @@ ERROR: {
     return;
 }
 
-void spn_move(spn_Group *gr, const char *dir) {
+void spn_move(spn_Mark *gr, const char *dir) {
     spn_Context *cxt = gr->cxt;
     assert(cxt);
     assert(cxt->buffer);
@@ -633,7 +647,7 @@ void spn_move(spn_Group *gr, const char *dir) {
     gr->index = new_index;
 }
 
-void spn_move_id(spn_Group *gr, size_t id) {
+void spn_move_id(spn_Mark *gr, size_t id) {
     spn_Context *cxt = gr->cxt;
     assert(cxt);
     assert(cxt->buffer);
@@ -661,7 +675,7 @@ void spn_move_id(spn_Group *gr, size_t id) {
     gr->index = new_index;
 }
 
-bool spn_step(spn_Group *gr) {
+bool spn_step(spn_Mark *gr) {
     spn_Context *cxt = gr->cxt;
     assert(cxt);
     assert(cxt->buffer);
@@ -676,7 +690,7 @@ bool spn_step(spn_Group *gr) {
     return true;
 }
 
-bool spn_step_flat(spn_Group *gr) {
+bool spn_step_flat(spn_Mark *gr) {
     spn_Context *cxt = gr->cxt;
     assert(cxt);
     assert(cxt->buffer);

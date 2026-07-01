@@ -12,48 +12,48 @@ int main() {
     const char *base_str =
 R"(// Core Settings
 Engine {
-    Name = "spn_ Custom Engine"
-    Version = 1, 0, 4
-    DebugMode = 1
+    Name: "spn_ Custom Engine"
+    Version: 1, 0, 4
+    DebugMode: 1
 }
 
 // Display Configuration
 Window {
-    Resolution = 1920, 1080
-    Vsync = 1
-    ClearColor = 0.15, 0.15, 0.15
+    Resolution: 1920, 1080
+    Vsync: 1
+    ClearColor: 0.15, 0.15, 0.15
 }
 
-// Scene Setup (Testing nested groups and anonymous idents)
+// Scene Setup (Testing nested marks and anonymous idents)
 Entities {
     *{
-        Type = "Player"
-        Position = -50.5, 100.25
-        Velocity = 0, -9.81
-        Health = 100
+        Type: "Player"
+        Position: -50.5, 100.25
+        Velocity: 0, -9.81
+        Health: 100
     }
     *{
-        Type = "Enemy_Horde"
-        Position = 300, 100
-        Velocity = -15.5, 0
-        Health = 50
+        Type: "Enemy_Horde"
+        Position: 300, 100
+        Velocity: -15.5, 0
+        Health: 50
     }
 }
 
-some { kind { of { deep { group {*{1, 2, 3}}, 4}, 5} } }
-long_string = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in r"
+some { kind { of { deep { mark {*{1, 2, 3}}, 4}, 5} } }
+long_string: "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in r"
 
 LayerMask {
-    player = 0b000101
-    enemy  = 0b000010
+    player: 0b000101
+    enemy : 0b000010
     0x1a
 }
 
-float = 2.4e5
-more_float = .5
+float: 2.4e5
+more_float: .5
 
 // Trailing global assignment
-Gravity = -9.81;
+Gravity: -9.81;
 
 //this is the end)";
 
@@ -168,48 +168,49 @@ Gravity = -9.81;
     const char *str =
 R"(// Comments are allowed
 
-// Make a group:
+// Make a "mark":
 Base {
     36, 3.141592, 1.6e9, 0x1A6F, // support multiple kind of number
     "Lorem ipsum dolor sit amet", "consectetur adipiscing elit" // support string
-    Sub { // nested group
+    Sub { // nested mark
         6.7, 3.6
-        Value = "funny nummbers" // direct assign
+        Value: "funny", "nummbers" // mark can be like this
     }
 }
 
 Frame {
-    // auto indexed group
-    // each *{ will be considered as "*<index>"
-    *{ 0, 1, 9 } // 0
-    *{ 0, 2, 8 } // 1
-    *{ 1, 3, 7 } // 2
-    *{ 1, 4, 6 } // 3
+    // auto indexed mark
+    // each "*" will be considered as "*<index>"
+    // also, you don't really need the ":" or ","
+    * 0 1 9 // 0
+    * 0 2 8 // 1
+    * 1 3 7 // 2
+    * 1 4 6 // 3
 })";
     spn_Context cxt = {};
     spn_parse(&cxt, str, strlen(str));
 
-    spn_Group global_gr = spn_root(&cxt);
-    spn_Group sub_gr = spn_find(global_gr, "Base/Sub");
+    spn_Mark global_gr = spn_root(&cxt);
+    spn_Mark sub_gr = spn_find(global_gr, "Base/Sub");
     float v0 = (float)spn_fields(&sub_gr)[0].float_val;
     float v1 = (float)spn_fields(&sub_gr)[1].float_val;
 
     printf("In Base/Sub: [0] = %.2f; [1] = %.2f\n", v0, v1);
 
-    spn_Group v_gr = spn_root(&cxt);
+    spn_Mark v_gr = spn_root(&cxt);
     spn_move(&v_gr, "Base/Sub/Value");
     const char *vs = spn_str(&cxt, spn_fields(&v_gr)[0]);
 
     printf("In Base/Sub/Value: %s\n", vs);
 
-    spn_Group frame_2_gr = spn_find(global_gr, "Frame/*2");
+    spn_Mark frame_2_gr = spn_find(global_gr, "Frame/*2");
     int v3 = (int)spn_fields(&frame_2_gr)[1].int_val;
-    spn_Group frame_3_gr = spn_find_id(spn_find(global_gr, "Frame"), 3);
+    spn_Mark frame_3_gr = spn_find_id(spn_find(global_gr, "Frame"), 3);
     int v4 = (int)spn_fields(&frame_3_gr)[2].int_val;
 
     printf("In Frame: *2[1] = %d; *3[2] = %d\n", v3, v4);
 
-    spn_Group frame_iter_gr = spn_next_flat(spn_find(global_gr, "Frame"));
+    spn_Mark frame_iter_gr = spn_next_flat(spn_find(global_gr, "Frame"));
     printf("Iterate Frame: ");
     do {
         int x = spn_fields(&frame_iter_gr)[1].int_val;

@@ -31,7 +31,7 @@ typedef enum {
     TOKEN_STR,
     TOKEN_LBRACE,
     TOKEN_RBRACE,
-    TOKEN_EQ,
+    TOKEN_COLON,
     TOKEN_COMMA
 } spn_TokenType;
 
@@ -85,7 +85,7 @@ typedef struct {
 typedef struct {
     spn_Context *cxt;
     size_t index;
-} spn_Group;
+} spn_Mark;
 
 /**
  * This is C, just remember to call this
@@ -102,81 +102,81 @@ _SPN_INLINE void spn_destroy(spn_Context *cxt) {
  */
 void spn_parse(spn_Context *cxt, const char *str_ptr, size_t str_len);
 
-_SPN_INLINE spn_Field *spn_fields(spn_Group *gr) {
+_SPN_INLINE spn_Field *spn_fields(spn_Mark *gr) {
     return &gr->cxt->field_vals[gr->cxt->idents[gr->index].fields_begin];
 }
 
 /**
- * Retrieves the top-level group of the context
+ * Retrieves the top-level mark of the context
  */
-_SPN_INLINE spn_Group spn_root(spn_Context *cxt) {
-    return (spn_Group){cxt, 0};
+_SPN_INLINE spn_Mark spn_root(spn_Context *cxt) {
+    return (spn_Mark){cxt, 0};
 }
 
 /**
- * Mutates the group to a child-group
+ * Mutates the mark to a child-mark
  *
  * Do nothing if error
  */
-void spn_move(spn_Group *gr, const char *dir);
+void spn_move(spn_Mark *gr, const char *dir);
 
 /**
- * Mutates the group to an auto-indexed child-group
+ * Mutates the mark to an auto-indexed child-mark
  *
  * Do nothing if error
  */
-void spn_move_id(spn_Group *gr, size_t id);
+void spn_move_id(spn_Mark *gr, size_t id);
 
 /**
- * Returns a new group from the child-group
+ * Returns a new mark from the child-mark
  *
- * Return the same as original group if error
+ * Return the same as original mark if error
  */
-_SPN_INLINE spn_Group spn_find(spn_Group gr, const char *dir) {
+_SPN_INLINE spn_Mark spn_find(spn_Mark gr, const char *dir) {
     spn_move(&gr, dir);
     return gr;
 }
 
 /**
- * Returns a new group from the child-group
+ * Returns a new mark from the child-mark
  *
- * Return the same as original group if error
+ * Return the same as original mark if error
  */
-_SPN_INLINE spn_Group spn_find_id(spn_Group gr, size_t id) {
+_SPN_INLINE spn_Mark spn_find_id(spn_Mark gr, size_t id) {
     spn_move_id(&gr, id);
     return gr;
 }
 
 /**
- * Advances group to the next sibling group (in the same level)
+ * Advances mark to the next sibling mark (in the same level)
  *
  * Returns false and do nothing if the end is reached
  */
-bool spn_step(spn_Group *gr);
+bool spn_step(spn_Mark *gr);
 
 /**
- * Returns the next sibling group (in the same level)
+ * Returns the next sibling mark (in the same level)
  *
- * Return the same as original group if error
+ * Return the same as original mark if error
  */
-_SPN_INLINE spn_Group spn_next(spn_Group gr) {
+_SPN_INLINE spn_Mark spn_next(spn_Mark gr) {
     spn_step(&gr);
     return gr;
 }
 
 /**
- * Advances group to the absolute next group
+ * Advances mark to the absolute next mark
  *
  * Returns false and do nothing if the end is reached
  */
-bool spn_step_flat(spn_Group *gr);
+bool spn_step_flat(spn_Mark *gr);
 
 /**
- * Returns the absolute next group
+ * Returns the absolute next mark
  *
- * Return the same as original group if error
+ * Return the same as original mark if error
  */
-_SPN_INLINE spn_Group spn_next_flat(spn_Group gr) {
+_SPN_INLINE spn_Mark spn_next_flat(spn_Mark gr) {
     spn_step_flat(&gr);
     return gr;
 }
