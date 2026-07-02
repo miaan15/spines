@@ -10,50 +10,54 @@ extern "C" {
 
 int main() {
     const char *base_str =
-R"(// Core Settings
-Engine {
-    Name: "spn_ Custom Engine"
-    Version: 1, 0, 4
-    DebugMode: 1
+R"(// comment comment comment
+some_thing {
+    name: "spines is great ma boi"
+    version: 1 2 3
+    count: 1.36e9
 }
 
-// Display Configuration
-Window {
-    Resolution: 1920, 1080
-    Vsync: 1
-    ClearColor: 0.15, 0.15, 0.15
+// comment comment again
+stuff_here {
+    dual_stuff: 1000, 2000
+    ok: 17382
 }
 
-// Scene Setup (Testing nested marks and anonymous idents)
-Entities {
-    *{
-        Type: "Player"
-        Position: -50.5, 100.25
-        Velocity: 0, -9.81
-        Health: 100
+// roi mot sang khong tin duoc rang em da gia
+// (giac mo khong con gi moi)
+roi_mot_sang {
+    * {
+        name: "stuff"
+        * 1 2 3
+        * 2 3 4
+        * 3 4 5
+        * 4 5 6
+        ok: -12, -1e3, -0o22, -100000
     }
-    *{
-        Type: "Enemy_Horde"
-        Position: 300, 100
-        Velocity: -15.5, 0
-        Health: 50
+    * {
+        name: "stuff 2 idk"
+        * 9 8 7
+        * 8 7 6
+        * 7 6 5
+        * 6 5 4
+        ok: -2, -1e7, -0o11, -100000
     }
 }
 
 some { kind { of { deep { mark {*{1, 2, 3}}, 4}, 5} } }
-long_string: "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in r"
+long_string: "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure"
 
-LayerMask {
-    player: 0b000101
-    enemy : 0b000010
+some_more {
+    _1: 0b000101
+    _2: 0b000010
     0x1a
 }
 
 float: 2.4e5
 more_float: .5
 
-// Trailing global assignment
-Gravity: -9.81;
+// what..
+gravity: -9.81;
 
 //this is the end)";
 
